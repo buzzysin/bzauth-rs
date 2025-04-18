@@ -1,0 +1,44 @@
+[package]
+name = "bzauth-rs"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["adapt_diesel", "runtime_axum"]
+adapt_diesel = ["diesel"]
+adapt_sqlx = []
+runtime_axum = ["axum"]
+runtime_actix = []
+
+[dependencies]
+# Core dependencies
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0.218", features = ["derive"] }
+oauth2 = "5.0.0"
+
+# Supported runtimes
+# todo: actix-web ? etc.
+axum = { version = "0.8.1", features = ["macros"], optional = true }
+
+# Data adapters
+# todo: sqlx ? etc.
+diesel = { version = "2.2.8", features = [
+  "sqlite",
+  "returning_clauses_for_sqlite_3_35",
+  "r2d2",
+  "chrono",
+], optional = true }
+
+# Data services
+
+# Utilities
+async-trait = "0.1.88"
+dyn-clone = "1.0.19"
+paste = "1.0.15"
+chrono = "0.4.40"
+http = "1.3.1"
+
+# Custom
+# bzauth-rs-macros = { path = "../bzauth-rs-macros" }
+
+[dev-dependencies]
