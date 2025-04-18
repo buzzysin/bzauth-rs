@@ -3,8 +3,10 @@ use oauth2::{
     basic::BasicClient,
 };
 
-use super::{CoreError, request::CoreRequest, response::CoreResponse};
-use crate::{cogs, contracts::provide::ProviderType};
+use crate::{
+    cogs::{self, CoreError, request::CoreRequest, response::CoreResponse},
+    contracts::provide::ProviderType,
+};
 
 impl From<oauth2::url::ParseError> for CoreError {
     fn from(err: oauth2::url::ParseError) -> Self {
@@ -27,17 +29,9 @@ pub async fn authorise<Payload>(request: CoreRequest<Payload>) -> Result<CoreRes
 
     match provider_type {
         ProviderType::OAuth => self::authorise_oauth2(request).await,
-        ProviderType::Email => todo!(),
-        _ => {
-            // Handle other providers
-            CoreError::new()
-                .with_message(format!(
-                    "Unsupported provider type: {}",
-                    provider_type.to_string()
-                ))
-                .with_status(http::StatusCode::BAD_REQUEST.into())
-                .into()
-        }
+        ProviderType::Email => self::authorise_email(request).await,
+        ProviderType::Credentials => self::authorise_credentials(request).await,
+        ProviderType::OIDC => self::authorise_oidc(request).await,
     }
 }
 
@@ -79,4 +73,55 @@ async fn authorise_oauth2<Payload>(
 
     // Redirect to the authorization URL
     Ok(CoreResponse::redirect(auth_url.to_string()))
+}
+
+async fn authorise_email<Payload>(
+    request: CoreRequest<Payload>,
+) -> Result<CoreResponse, CoreError> {
+    // Handle email provider authorisation
+    let provider = cogs::extract_provider(&request)?;
+    let provider_type = provider.provider_type();
+
+    // Handle other providers
+    CoreError::new()
+        .with_message(format!(
+            "Unsupported provider type: {}",
+            provider_type.to_string()
+        ))
+        .with_status(http::StatusCode::BAD_REQUEST.into())
+        .into()
+}
+
+async fn authorise_credentials<Payload>(
+    request: CoreRequest<Payload>,
+) -> Result<CoreResponse, CoreError> {
+    // Handle credentials provider authorisation
+    let provider = cogs::extract_provider(&request)?;
+    let provider_type = provider.provider_type();
+
+    // Handle other providers
+    CoreError::new()
+        .with_message(format!(
+            "Unsupported provider type: {}",
+            provider_type.to_string()
+        ))
+        .with_status(http::StatusCode::BAD_REQUEST.into())
+        .into()
+}
+
+async fn authorise_oidc<Payload>(
+    request: CoreRequest<Payload>,
+) -> Result<CoreResponse, CoreError> {
+    // Handle OIDC provider authorisation
+    let provider = cogs::extract_provider(&request)?;
+    let provider_type = provider.provider_type();
+
+    // Handle other providers
+    CoreError::new()
+        .with_message(format!(
+            "Unsupported provider type: {}",
+            provider_type.to_string()
+        ))
+        .with_status(http::StatusCode::BAD_REQUEST.into())
+        .into()
 }

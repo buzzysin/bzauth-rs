@@ -1,9 +1,8 @@
 use http::StatusCode;
 use oauth2::{CsrfToken, PkceCodeChallenge};
 
-use super::{CoreError, request::CoreRequest, response::CoreResponse};
 use crate::{
-    cogs,
+    cogs::{self, CoreError, request::CoreRequest, response::CoreResponse},
     contracts::provide::{ProvideOAuth2, ProviderType},
 };
 

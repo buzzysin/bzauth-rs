@@ -9,7 +9,7 @@ use serde::Serialize;
 use super::auth::ExtractAuth;
 use crate::contracts::provide::Provide;
 
-pub struct ExtractProvider(pub(crate) Box<dyn Provide>);
+pub struct ExtractProvider(pub Box<dyn Provide>);
 
 #[derive(Debug, Serialize)]
 pub enum ExtractProviderError {
