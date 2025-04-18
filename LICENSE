@@ -1,6 +1,10 @@
+This software, bzauth-rs, is an adaptation of the JavaScript Library Auth.js
+(https://github.com/nextauthjs/next-auth), originally licensed under the ISC License.
+This adaptation continues to be licensed under the ISC License, and is described below:
+
 ISC License
 
-Copyright (c) 2022-2024, Balázs Orbán
+Copyright (c) 2025, Taharka Okai <buzzysin@users.noreply.github.com>
 
 Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
