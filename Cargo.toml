@@ -1,5 +1,5 @@
 [workspace]
-members = ["bzauth-rs", "bzauth-rs-macros"]
+members = ["bzauth-rs"]
 resolver = "2"
 
 [workspace.package]
