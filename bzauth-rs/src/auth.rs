@@ -25,12 +25,53 @@ pub struct AuthSessionOptions {
     pub generate_session: Option<fn() -> String>,
 }
 
+#[derive(Default)]
 pub struct AuthOptions {
     pub providers: Vec<Box<dyn Provide>>,
     pub adaptor: Option<Box<dyn Adapt>>,
     pub callbacks: Option<AuthCallbackOptions>,
     pub session: Option<AuthSessionOptions>,
 }
+
+impl AuthOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn add_provider(mut self, provider: Box<dyn Provide>) -> Self {
+        self.providers.push(provider);
+        self
+    }
+    pub fn with_providers(mut self, providers: Vec<Box<dyn Provide>>) -> Self {
+        self.providers = providers;
+        self
+    }
+    pub fn with_adaptor(mut self, adaptor: Box<dyn Adapt>) -> Self {
+        self.adaptor = Some(adaptor);
+        self
+    }
+    pub fn with_callback(
+        mut self,
+        callback: fn(SignInOptions) -> dyn Future<Output = SignInResult>,
+    ) -> Self {
+        if let Some(ref mut callbacks) = self.callbacks {
+            callbacks.sign_in = Some(callback);
+        } else {
+            self.callbacks = Some(AuthCallbackOptions {
+                sign_in: Some(callback),
+            });
+        }
+        self
+    }
+    pub fn with_callbacks(mut self, callbacks: AuthCallbackOptions) -> Self {
+        self.callbacks = Some(callbacks);
+        self
+    }
+    pub fn with_session(mut self, session: AuthSessionOptions) -> Self {
+        self.session = Some(session);
+        self
+    }
+}
+
 pub struct Auth {
     pub options: AuthOptions,
 }

@@ -82,7 +82,7 @@ async fn authorise_email<Payload>(
     let provider = cogs::extract_provider(&request)?;
     let provider_type = provider.provider_type();
 
-    // Handle other providers
+    // So far unsupported
     CoreError::new()
         .with_message(format!(
             "Unsupported provider type: {}",
@@ -99,7 +99,7 @@ async fn authorise_credentials<Payload>(
     let provider = cogs::extract_provider(&request)?;
     let provider_type = provider.provider_type();
 
-    // Handle other providers
+    // So far unsupported
     CoreError::new()
         .with_message(format!(
             "Unsupported provider type: {}",
@@ -116,7 +116,7 @@ async fn authorise_oidc<Payload>(
     let provider = cogs::extract_provider(&request)?;
     let provider_type = provider.provider_type();
 
-    // Handle other providers
+    // So far unsupported
     CoreError::new()
         .with_message(format!(
             "Unsupported provider type: {}",
