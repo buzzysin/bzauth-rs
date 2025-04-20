@@ -65,11 +65,29 @@ pub fn extract_provider<Payload>(
     Ok(provider)
 }
 
+pub fn extract_auth_code_and_state<Payload>(
+    request: &CoreRequest<Payload>,
+) -> Result<(String, String), UtilError> {
+    let code = request
+        .query()
+        .get("code")
+        .ok_or_else(|| UtilError::MissingAuth("Missing authorization code".to_string()))?
+        .to_string();
+
+    let state = request
+        .query()
+        .get("state")
+        .ok_or_else(|| UtilError::MissingAuth("Missing state".to_string()))?
+        .to_string();
+
+    Ok((code, state))
+}
+
 type CatchAllClient =
     BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet>;
 
 pub fn generate_client_from_auth(
-    oauth2_provider: &Box<dyn ProvideOAuth2>,
+    oauth2_provider: &dyn ProvideOAuth2,
 ) -> Result<CatchAllClient, UtilError> {
     let auth_url = oauth2_provider.auth_endpoint().url();
     let client_id = oauth2_provider.client_id();

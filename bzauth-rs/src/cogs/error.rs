@@ -49,3 +49,9 @@ impl From<CoreError> for CoreResponse {
         }
     }
 }
+
+impl Default for CoreError {
+    fn default() -> Self {
+        CoreError::new()
+    }
+}

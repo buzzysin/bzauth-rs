@@ -239,7 +239,7 @@ async fn main() {
     unsafe {
         std::env::set_var("DISCORD_CLIENT_ID", "YOUR_DISCORD_CLIENT_ID");
         std::env::set_var("DISCORD_CLIENT_SECRET", "YOUR_DISCORD_CLIENT_SECRET");
-    
+
         std::env::set_var("GOOGLE_CLIENT_ID", "YOUR_GOOGLE_CLIENT_ID");
         std::env::set_var("GOOGLE_CLIENT_SECRET", "YOUR_GOOGLE_CLIENT_SECRET");
     }
