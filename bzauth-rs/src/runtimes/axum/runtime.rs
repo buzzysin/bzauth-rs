@@ -44,8 +44,7 @@ impl AxumRuntime {
         let auth = Arc::new(Auth::from_options(auth_options));
 
         // Create the runtime
-        let runtime = AxumRuntime { auth, routes };
-        runtime
+        AxumRuntime { auth, routes }
     }
 
     pub fn create_router(auth_options: &AuthOptions) -> Router {

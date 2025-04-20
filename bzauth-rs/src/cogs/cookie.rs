@@ -170,14 +170,12 @@ impl Cookie {
         }
     }
 
+    /// Turns the cookie into a naive string. True cookies will have to be chunked into parts
+    /// and sent as multiple cookies when over the size limit. This is left as a TODO in the
+    /// [Cookies] struct.
+    ///
+    /// [Cookies]: struct.Cookies.html
     pub fn unparse(&self) -> String {
-        // Algorithm:
-        // 1. Naively concatenate all fields
-        // 2. Check if the size exceeds MAX_COOKIE_SIZE
-        // 3. If it does, truncate the value to fit and split the cookie
-        // 3.1 New cookie names are original.(index) where index is the number of chunks
-        // Repeat until all fields are within the size limit
-
         let mut cookie_string = format!(
             "{}={}",
             self.name,
@@ -236,7 +234,7 @@ impl FromStr for Cookie {
 
 impl std::fmt::Display for Cookie {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", self.unparse())
     }
 }
 

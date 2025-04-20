@@ -65,7 +65,7 @@ impl AdaptSession {
             user_id: session.user.unwrap().id.unwrap(),
             expires_in: {
                 let now = chrono::Utc::now().timestamp() as u64;
-                session.expires_at.unwrap_or(0) as u64 - now
+                session.expires_at.unwrap_or(0) - now
             },
         }
     }

@@ -22,7 +22,7 @@ impl<Payload> From<Request<Payload>> for CoreRequest<Payload> {
 
         let path = request.uri().path().to_string();
         let method = request.method().to_string();
-        let query = request.uri().query().unwrap_or("").to_string();
+        let uri = request.uri().clone();
         let headers = request.headers().clone();
         let cookies: Cookies = request
             .headers()
@@ -36,18 +36,16 @@ impl<Payload> From<Request<Payload>> for CoreRequest<Payload> {
         // Request consumed after this point
         let body = Some(request.into_body());
 
-        // Build the request
-        let request = CoreRequest {
+        // Build the request#
+        CoreRequest {
             path,
             method,
-            query,
+            uri,
             headers,
             cookies, // Placeholder for cookies, you can implement this as needed
             body,
             auth,
-        };
-
-        request
+        }
     }
 }
 
@@ -75,7 +73,7 @@ impl<T: Serialize> IntoResponse for CoreResponse<T> {
         for (_, value) in self.cookies.iter() {
             response.headers_mut().append(
                 axum::http::header::SET_COOKIE,
-                format!("{}", value.unparse()).parse().unwrap(),
+                value.unparse().parse().unwrap(),
             );
         }
 

@@ -37,6 +37,9 @@ pub struct DiscordProviderOptions {
 }
 
 impl DiscordProvider {
+    /// Create a new DiscordProvider with default options
+    ///
+    /// This will use the environment variables DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET
     pub fn new() -> Self {
         let client_id = std::env::var("DISCORD_CLIENT_ID").ok();
         let client_secret = std::env::var("DISCORD_CLIENT_SECRET").ok();
@@ -44,7 +47,6 @@ impl DiscordProvider {
         Self::from_options(DiscordProviderOptions {
             client_id,
             client_secret,
-            ..Default::default()
         })
         .unwrap()
     }
@@ -113,6 +115,12 @@ impl DiscordProvider {
         };
 
         Ok(provider)
+    }
+}
+
+impl Default for DiscordProvider {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

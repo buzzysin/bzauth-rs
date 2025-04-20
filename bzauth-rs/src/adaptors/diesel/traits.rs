@@ -38,7 +38,7 @@ macro_rules! adapt_diesel_user {
             }
         }
 
-        impl $crate::adaptors::diesel_traits::AdaptUserOperation<$connection> for $table_struct {
+        impl $crate::adaptors::diesel::AdaptUserOperation<$connection> for $table_struct {
             type Model = $model_type;
             fn create_user(&self, conn: &mut $connection, user: &Self::Model) -> Self::Model {
                 // Create a user using the connection
@@ -244,7 +244,7 @@ macro_rules! adapt_diesel_account {
             }
         }
 
-        impl $crate::adaptors::diesel_traits::AdaptAccountOperation<$connection> for $table_struct {
+        impl $crate::adaptors::diesel::AdaptAccountOperation<$connection> for $table_struct {
             type Model = $model_type;
             type User = $user_struct;
 
@@ -441,7 +441,7 @@ macro_rules! adapt_diesel_session {
             }
         }
 
-        impl $crate::adaptors::diesel_traits::AdaptSessionOperation<$connection> for $table_struct {
+        impl $crate::adaptors::diesel::AdaptSessionOperation<$connection> for $table_struct {
             type Model = $model_type;
             type User = $user_struct;
             fn create_session(&self, conn: &mut $connection, session: Self::Model) -> Self::Model {
@@ -591,7 +591,7 @@ macro_rules! adapt_diesel_verification_token {
             }
         }
 
-        impl $crate::adaptors::diesel_traits::AdaptVerificationTokenOperation<$connection>
+        impl $crate::adaptors::diesel::AdaptVerificationTokenOperation<$connection>
             for $table_struct
         {
             type Model = $model_type;

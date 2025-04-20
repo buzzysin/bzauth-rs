@@ -1,6 +1,7 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
-use http::HeaderMap;
+use http::Uri;
+use http::{HeaderMap, HeaderName};
 
 use crate::{auth::Auth, cogs::Cookies};
 
@@ -8,7 +9,7 @@ use crate::{auth::Auth, cogs::Cookies};
 pub struct CoreRequest<Body = String> {
     pub path: String,
     pub method: String,
-    pub query: String,
+    pub uri: Uri,
     pub headers: HeaderMap,
     pub cookies: Cookies,
     pub body: Option<Body>,
@@ -21,5 +22,22 @@ impl<T> CoreRequest<T> {
             auth: Some(auth),
             ..self
         }
+    }
+
+    pub fn query(&self) -> HashMap<String, String> {
+        let mut query = HashMap::new();
+        if let Some(query_string) = self.uri.query() {
+            for (key, value) in url::form_urlencoded::parse(query_string.as_bytes()) {
+                query.insert(key.to_string(), value.to_string());
+            }
+        }
+        query
+    }
+
+    pub fn header(&self, key: HeaderName) -> Option<String> {
+        self.headers
+            .get(key)
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string())
     }
 }

@@ -126,3 +126,9 @@ impl<Payload: Serialize> CoreResponse<Payload> {
         }
     }
 }
+
+impl Default for CoreResponse<String> {
+    fn default() -> Self {
+        CoreResponse::new()
+    }
+}

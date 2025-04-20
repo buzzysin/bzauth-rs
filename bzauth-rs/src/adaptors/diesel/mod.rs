@@ -1,9 +1,7 @@
+pub mod traits;
 use diesel::r2d2::{ManageConnection, Pool};
+pub use traits::*; // re-export all traits (and macros) from the traits module
 
-use super::diesel_traits::{
-    AdaptAccountOperation, AdaptSessionOperation, AdaptUserOperation,
-    AdaptVerificationTokenOperation,
-};
 use crate::contracts::adapt::{
     Adapt, AdaptAccount, AdaptSession, AdaptUser, AdaptVerificationToken, CreateSessionOptions,
     ProviderAccountId, SessionUser, UseVerificationTokenOptions,

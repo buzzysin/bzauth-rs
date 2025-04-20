@@ -1,39 +1,80 @@
 use http::StatusCode;
-use oauth2::{CsrfToken, PkceCodeChallenge};
 
 use crate::{
     cogs::{self, CoreError, request::CoreRequest, response::CoreResponse},
-    contracts::provide::{ProvideOAuth2, ProviderType},
+    contracts::provide::ProviderType,
 };
 
 // Handle the callback
 pub async fn callback<Payload>(request: CoreRequest<Payload>) -> Result<CoreResponse, CoreError> {
     let provider = cogs::extract_provider(&request)?;
-
     let provider_type = provider.provider_type();
-    if provider_type != ProviderType::OAuth {
+
+    // The user has just completed the OAuth2 flow and is being redirected back to the application
+    // with an authorization code. We need to exchange this code for an access token.
+
+    match provider_type {
+        ProviderType::OAuth => callback_oauth2(request).await,
+        ProviderType::Email => callback_email(request).await,
+        ProviderType::Credentials => callback_credentials(request).await,
+        ProviderType::OIDC => callback_oidc(request).await,
+    }
+}
+
+async fn callback_oauth2<Payload>(
+    request: CoreRequest<Payload>,
+) -> Result<CoreResponse, CoreError> {
+    // Handle OAuth2 callback
+    let provider = cogs::extract_provider(&request)?;
+    let _oauth2_provider = provider
+        .as_ref()
+        .as_oauth2()
+        .ok_or_else(|| CoreError::new().with_message("Provider is not OAuth2".to_string()))?;
+
+    // Handle potential callback errors from the provider
+    if let Some(error) = request.query().get("error") {
         return Err(CoreError::new()
-            .with_message("Only OAuth2 providers are supported".to_string())
+            .with_message(format!("OAuth2 error: {}", error))
             .with_status(StatusCode::BAD_REQUEST.into()));
     }
 
-    let oauth2_provider = provider.as_any().downcast_ref::<Box<dyn ProvideOAuth2>>();
-    if oauth2_provider.is_none() {
-        return Err(CoreError::new()
-            .with_message("Failed to downcast to OAuth2 provider".to_string())
-            .with_status(StatusCode::BAD_REQUEST.into()));
-    }
+    // Extract the authorization code from the request
+    let (_code, _state) = cogs::extract_auth_code_and_state(&request)?;
 
-    let oauth2_provider = oauth2_provider.unwrap();
-    let client = cogs::generate_client_from_auth(oauth2_provider)?;
+    todo!()
+}
 
-    // Todo: Generate our own CsrfToken
-    let (pkce_challenge, _pkce_verifier) = PkceCodeChallenge::new_random_sha256();
-    let (auth_url, _csrf_token) = client
-        .authorize_url(CsrfToken::new_random)
-        .set_pkce_challenge(pkce_challenge)
-        .url();
+async fn callback_email<Payload>(request: CoreRequest<Payload>) -> Result<CoreResponse, CoreError> {
+    // Handle email provider callback
+    let provider = cogs::extract_provider(&request)?;
+    let provider_type = provider.provider_type();
 
-    // Redirect the user to the authorization URL
-    Ok(CoreResponse::redirect(auth_url.to_string()))
+    // So far unsupported
+    Err(CoreError::new()
+        .with_message(format!("Unsupported provider type: {}", provider_type))
+        .with_status(StatusCode::BAD_REQUEST.into()))
+}
+
+async fn callback_credentials<Payload>(
+    request: CoreRequest<Payload>,
+) -> Result<CoreResponse, CoreError> {
+    // Handle credentials provider callback
+    let provider = cogs::extract_provider(&request)?;
+    let provider_type = provider.provider_type();
+
+    // So far unsupported
+    Err(CoreError::new()
+        .with_message(format!("Unsupported provider type: {}", provider_type))
+        .with_status(StatusCode::BAD_REQUEST.into()))
+}
+
+async fn callback_oidc<Payload>(request: CoreRequest<Payload>) -> Result<CoreResponse, CoreError> {
+    // Handle OIDC provider callback
+    let provider = cogs::extract_provider(&request)?;
+    let provider_type = provider.provider_type();
+
+    // So far unsupported
+    Err(CoreError::new()
+        .with_message(format!("Unsupported provider type: {}", provider_type))
+        .with_status(StatusCode::BAD_REQUEST.into()))
 }
