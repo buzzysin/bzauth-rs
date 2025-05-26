@@ -1,9 +1,6 @@
 use diesel::r2d2::{ManageConnection, Pool};
 
-use super::diesel_traits::{
-    AdaptAccountOperation, AdaptSessionOperation, AdaptUserOperation,
-    AdaptVerificationTokenOperation,
-};
+use super::traits::*;
 use crate::contracts::adapt::{
     Adapt, AdaptAccount, AdaptSession, AdaptUser, AdaptVerificationToken, CreateSessionOptions,
     ProviderAccountId, SessionUser, UseVerificationTokenOptions,

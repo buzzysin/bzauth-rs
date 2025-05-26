@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use super::error::ProviderError;
 use crate::contracts::{
-    User,
     endpoint::Endpoint,
     provide::{ProvideOAuth2, ProviderType},
+    user::User,
 };
 
 pub struct GoogleProfile {
@@ -44,11 +44,13 @@ pub struct GoogleProviderOptions {
 }
 
 impl GoogleProvider {
+    /// Create a new GoogleProvider with default options
+    ///
+    /// This will use the environment variables GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
     pub fn new() -> Self {
         Self::from_options(GoogleProviderOptions {
             client_id: std::env::var("GOOGLE_CLIENT_ID").ok(),
             client_secret: std::env::var("GOOGLE_CLIENT_SECRET").ok(),
-            ..Default::default()
         })
         .unwrap()
     }
@@ -64,7 +66,7 @@ impl GoogleProvider {
             .ok_or(ProviderError::MissingClientSecret("".to_string()))?;
 
         let provider = GoogleProvider {
-            id: "Google".to_string(),
+            id: "google".to_string(),
             name: "Google".to_string(),
             provider_type: ProviderType::OAuth,
             client_id,
@@ -80,8 +82,6 @@ impl GoogleProvider {
             token_endpoint: "https://oauth2.googleapis.com/token".into(),
             userinfo_endpoint: "https://openidconnect.googleapis.com/v1/userinfo".into(),
             _profile: |profile| {
-                let profile = profile;
-
                 Box::new(User {
                     // todo.
                     id: Some(profile.sub),
@@ -94,6 +94,13 @@ impl GoogleProvider {
         };
 
         Ok(provider)
+    }
+}
+
+impl Default for GoogleProvider {
+    /// Create a new GoogleProvider with default options
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -125,7 +132,7 @@ impl ProvideOAuth2 for GoogleProvider {
     fn token_endpoint(&self) -> Endpoint {
         self.token_endpoint.clone()
     }
-    fn userinfo_endpoint(&self) -> Endpoint {
+    fn profile_endpoint(&self) -> Endpoint {
         self.userinfo_endpoint.clone()
     }
 }

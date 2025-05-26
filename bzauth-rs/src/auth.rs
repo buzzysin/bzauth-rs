@@ -1,4 +1,4 @@
-use crate::contracts::{Account, User, adapt::Adapt, provide::Provide};
+use crate::contracts::{account::Account, adapt::Adapt, provide::Provide, user::User};
 
 pub struct SignInOptions {
     pub user: Box<User>,
@@ -37,38 +37,43 @@ impl AuthOptions {
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn add_provider(mut self, provider: Box<dyn Provide>) -> Self {
-        self.providers.push(provider);
-        self
+    pub fn add_provider(self, provider: Box<dyn Provide>) -> Self {
+        let mut providers = self.providers;
+        providers.push(provider);
+
+        Self { providers, ..self }
     }
-    pub fn with_providers(mut self, providers: Vec<Box<dyn Provide>>) -> Self {
-        self.providers = providers;
-        self
+    pub fn with_providers(self, providers: Vec<Box<dyn Provide>>) -> Self {
+        Self { providers, ..self }
     }
-    pub fn with_adaptor(mut self, adaptor: Box<dyn Adapt>) -> Self {
-        self.adaptor = Some(adaptor);
-        self
+    pub fn with_adaptor(self, adaptor: Box<dyn Adapt>) -> Self {
+        Self {
+            adaptor: Some(adaptor),
+            ..self
+        }
     }
     pub fn with_callback(
-        mut self,
+        self,
         callback: fn(SignInOptions) -> dyn Future<Output = SignInResult>,
     ) -> Self {
-        if let Some(ref mut callbacks) = self.callbacks {
-            callbacks.sign_in = Some(callback);
-        } else {
-            self.callbacks = Some(AuthCallbackOptions {
-                sign_in: Some(callback),
-            });
+        let mut callbacks = self.callbacks.unwrap_or_default();
+        callbacks.sign_in = Some(callback);
+        Self {
+            callbacks: Some(callbacks),
+            ..self
         }
-        self
     }
-    pub fn with_callbacks(mut self, callbacks: AuthCallbackOptions) -> Self {
-        self.callbacks = Some(callbacks);
-        self
+    pub fn with_callbacks(self, callbacks: AuthCallbackOptions) -> Self {
+        Self {
+            callbacks: Some(callbacks),
+            ..self
+        }
     }
-    pub fn with_session(mut self, session: AuthSessionOptions) -> Self {
-        self.session = Some(session);
-        self
+    pub fn with_session(self, session: AuthSessionOptions) -> Self {
+        Self {
+            session: Some(session),
+            ..self
+        }
     }
 }
 

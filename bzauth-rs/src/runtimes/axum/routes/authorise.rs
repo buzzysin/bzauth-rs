@@ -1,13 +1,15 @@
 use axum::extract::Request;
 
-use crate::cogs::{CoreError, request::CoreRequest, response::CoreResponse};
-use crate::{cogs, runtimes::axum::extractors::auth::ExtractAuth};
+use crate::tools::{
+    CoreError, request::CoreRequest, response::CoreResponse, try_async::TryFromAsync,
+};
+use crate::{runtimes::axum::extractors::auth::ExtractAuth, tools};
 
 pub async fn authorise(
     ExtractAuth(auth): ExtractAuth,
     request: Request,
 ) -> Result<CoreResponse, CoreError> {
     // Pass to internal handler
-    let core_request = CoreRequest::from(request).with_auth(auth);
-    cogs::authorise(core_request).await
+    let core_request = CoreRequest::try_from_async(request).await?.with_auth(auth);
+    tools::authorise(core_request).await
 }

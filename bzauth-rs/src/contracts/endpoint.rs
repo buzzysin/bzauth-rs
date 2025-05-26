@@ -30,6 +30,11 @@ impl Endpoint {
             Endpoint::Url(url) => url.clone(),
             Endpoint::UrlWithParams(url, params) => {
                 let mut url_with_params = url.clone();
+                if params.is_empty() {
+                    return url_with_params;
+                }
+
+                url_with_params.push('?');
                 for (key, value) in params {
                     url_with_params.push_str(&format!("&{}={}", key, value));
                 }
