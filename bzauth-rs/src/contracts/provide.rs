@@ -3,7 +3,7 @@ use std::any::Any;
 use dyn_clone::DynClone;
 use serde::Serialize;
 
-use super::{User, endpoint::Endpoint};
+use super::{endpoint::Endpoint, user::User};
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub enum ProviderType {
@@ -60,7 +60,7 @@ where
     // Endpoints
     fn auth_endpoint(&self) -> Endpoint;
     fn token_endpoint(&self) -> Endpoint;
-    fn userinfo_endpoint(&self) -> Endpoint;
+    fn profile_endpoint(&self) -> Endpoint;
 }
 dyn_clone::clone_trait_object!(ProvideOAuth2);
 

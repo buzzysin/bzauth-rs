@@ -2,13 +2,15 @@ use std::sync::Arc;
 
 use axum::{
     Json, Router,
-    routing::{get, post},
+    handler::Handler,
+    routing::{MethodRouter, get, post},
 };
 use serde::{Serialize, ser::SerializeStruct};
 
 use super::routes::{authorise, callback, csrf};
 use crate::auth::Auth;
 use crate::{auth::AuthOptions, contracts::provide::Provide};
+
 pub struct AxumRuntime {
     pub auth: Arc<Auth>,
     pub routes: Router,
@@ -16,24 +18,6 @@ pub struct AxumRuntime {
 
 pub struct AxumRuntimeOptions {
     pub auth_options: AuthOptions,
-}
-
-impl Serialize for Box<dyn Provide> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let provider = self.as_ref();
-        let provider_name = provider.name();
-        let provider_type = provider.provider_type();
-        let provider_id = provider.id();
-
-        let mut state = serializer.serialize_struct("Provider", 3)?;
-        state.serialize_field("name", &provider_name)?;
-        state.serialize_field("type", &provider_type)?;
-        state.serialize_field("id", &provider_id)?;
-        state.end()
-    }
 }
 
 impl AxumRuntime {
@@ -55,13 +39,23 @@ impl AxumRuntime {
             // Starts a login flow with a provider
             .route(
                 "/login/{provider}",
-                post(authorise),
+        {
+                    #[cfg(not(debug_assertions))]
+                    {
+                        post(authorise)
+                    }
+                    // In debug mode, allow both GET and POST for authorisation
+                    #[cfg(debug_assertions)]
+                    {
+                       any(authorise)
+                    }
+                }
+                ,
             )
             // Where the provider redirects back to (GET or POST)
             .route(
                 "/callback/{provider}",
-                get(callback)
-                    .post(callback),
+                any(callback),
             )
             // Ask for a csrf token
             .route("/csrf", get(csrf))
@@ -72,4 +66,26 @@ impl AxumRuntime {
             // Get a list of providers
             .route("/providers", get(providers_handler))
     }
+}
+
+impl Serialize for Box<dyn Provide> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let provider = self.as_ref();
+        let provider_name = provider.name();
+        let provider_type = provider.provider_type();
+        let provider_id = provider.id();
+
+        let mut state = serializer.serialize_struct("Provider", 3)?;
+        state.serialize_field("name", &provider_name)?;
+        state.serialize_field("type", &provider_type)?;
+        state.serialize_field("id", &provider_id)?;
+        state.end()
+    }
+}
+
+fn any<H: Handler<T, S>, T: 'static, S: Clone + Send + Sync + 'static>(f: H) -> MethodRouter<S> {
+    post(f.clone()).get(f.clone())
 }

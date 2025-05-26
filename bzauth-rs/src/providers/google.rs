@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use super::error::ProviderError;
 use crate::contracts::{
-    User,
     endpoint::Endpoint,
     provide::{ProvideOAuth2, ProviderType},
+    user::User,
 };
 
 pub struct GoogleProfile {
@@ -132,7 +132,7 @@ impl ProvideOAuth2 for GoogleProvider {
     fn token_endpoint(&self) -> Endpoint {
         self.token_endpoint.clone()
     }
-    fn userinfo_endpoint(&self) -> Endpoint {
+    fn profile_endpoint(&self) -> Endpoint {
         self.userinfo_endpoint.clone()
     }
 }

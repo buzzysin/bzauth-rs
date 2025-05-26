@@ -1,6 +1,6 @@
 // Internals
-pub mod cogs;
 pub mod contracts;
+pub mod tools;
 
 // Externals
 pub mod adaptors;

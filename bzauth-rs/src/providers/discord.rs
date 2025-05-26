@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use super::error::ProviderError;
 use crate::contracts::{
-    User,
     endpoint::Endpoint,
     provide::{ProvideOAuth2, ProviderType},
+    user::User,
 };
 
 pub struct DiscordProfile {
@@ -25,7 +25,7 @@ pub struct DiscordProvider {
     client_secret: String,
     auth_endpoint: Endpoint,
     token_endpoint: Endpoint,
-    userinfo_endpoint: Endpoint,
+    profile_endpoint: Endpoint,
     _profile: fn(profile: DiscordProfile) -> Box<User>,
     _options: DiscordProviderOptions,
 }
@@ -71,12 +71,12 @@ impl DiscordProvider {
                 String::from("https://discord.com/oauth2/authorize"),
                 {
                     let mut map = HashMap::<String, String>::new();
-                    map.insert(String::from("scope"), String::from("identify email"));
+                    map.insert(String::from("scope"), String::from("identify+email"));
                     map
                 },
             )),
             token_endpoint: "https://discord.com/api/oauth2/token".into(),
-            userinfo_endpoint: "https://discord.com/api/oauth2/token".into(),
+            profile_endpoint: "https://discord.com/api/users/@me".into(),
             _profile: |profile| {
                 let mut profile = profile;
 
@@ -152,20 +152,7 @@ impl ProvideOAuth2 for DiscordProvider {
     fn token_endpoint(&self) -> Endpoint {
         self.token_endpoint.clone()
     }
-    fn userinfo_endpoint(&self) -> Endpoint {
-        self.userinfo_endpoint.clone()
+    fn profile_endpoint(&self) -> Endpoint {
+        self.profile_endpoint.clone()
     }
 }
-
-// impl
-
-// fn get_profile(&self) -> fn(DiscordProfile) -> Box<User> {
-//     self.profile
-// }
-
-// Allows implicit conversion from DiscordProvider to Box<dyn Provide>
-// impl From<DiscordProvider> for Box<dyn Provide> {
-//     fn from(provider: DiscordProvider) -> Self {
-//         Box::new(provider)
-//     }
-// }

@@ -253,7 +253,10 @@ impl Cookies {
         }
     }
 
-    pub fn set(&mut self, name: String, value: String) {
+    pub fn set<K: Into<String>, V: Into<String>>(&mut self, name: K, value: V) {
+        let name = name.into();
+        let value = value.into();
+
         // If the cookie exists, update it
         if let Some(cookie) = self.cookies.get_mut(&name) {
             cookie.value = Some(value);
@@ -264,10 +267,12 @@ impl Cookies {
         }
     }
 
-    pub fn get(&self, name: &str) -> Option<Cookie> {
-        self.cookies.get(name).cloned().or_else(|| {
+    pub fn get<K: Into<String>>(&self, name: K) -> Option<Cookie> {
+        let name = name.into();
+
+        self.cookies.get(&name).cloned().or_else(|| {
             // If the cookie is not found, return a default cookie
-            Some(Cookie::new(name.to_string()))
+            Some(Cookie::new(name))
         })
     }
 
@@ -300,6 +305,8 @@ impl FromStr for Cookies {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut cookies = Cookies::new();
 
+        tracing::debug!("[cookie] Parsing cookies from string: {}", s);
+
         let mut this_cookie = Cookie::new("".to_string());
         // Split the string by semicolon
         // This will produce key=value , with some cookie attributes
@@ -307,6 +314,19 @@ impl FromStr for Cookies {
             let mut kv = part.split('=');
             let key = kv.next().unwrap_or("").trim();
             let value = kv.next().unwrap_or("").trim();
+
+            // Skip empty keys
+            if key.is_empty() {
+                tracing::warn!("[cookie] Skipping empty key in cookie part: {}", part);
+                continue;
+            }
+
+            // Skip empty values
+            if value.is_empty() {
+                tracing::warn!("[cookie] Skipping empty value for key: {}", key);
+                continue;
+            }
+
             // Check if the key is a cookie attribute
             match key {
                 "Path" => this_cookie.path = Some(value.to_string()),
@@ -317,23 +337,32 @@ impl FromStr for Cookies {
                 "Expires" => this_cookie.expires = Some(value.parse().unwrap_or(0)),
                 "Max-Age" => this_cookie.max_age = Some(value.parse::<i32>().unwrap_or(0)),
                 _ => {
-                    // If the key is not a cookie attribute, it is a cookie name
-                    if this_cookie.name.is_empty() {
-                        this_cookie.name = key.to_string();
-                        this_cookie.value = Some(value.to_string());
-                    }
-                    // If we already have a cookie name, this is a new cookie
-                    else {
-                        cookies.set(this_cookie.name.clone(), this_cookie.value.unwrap());
-                        this_cookie = Cookie::new(key.to_string());
+                    tracing::debug!("[cookie] Encountered new cookie: {}", key);
+                    // If we have a cookie left, add it to the cookies
+                    if !this_cookie.name.is_empty() {
+                        if this_cookie.value.is_none() {
+                            tracing::warn!("Cookie {} has no value, skipping", this_cookie.name);
+                        } else {
+                            tracing::debug!("Adding cookie: {}", this_cookie.name.clone());
+                            cookies
+                                .set(this_cookie.name.clone(), this_cookie.value.clone().unwrap());
+                        }
                     }
                 }
             }
         }
 
-        // Add the last cookie
+        // If we have a cookie left, add it to the cookies
         if !this_cookie.name.is_empty() {
-            cookies.set(this_cookie.name.clone(), this_cookie.value.unwrap());
+            if this_cookie.value.is_none() {
+                tracing::warn!(
+                    "[cookie] Cookie {} has no value, skipping",
+                    this_cookie.name
+                );
+            } else {
+                tracing::debug!("[cookie] Adding cookie: {}", this_cookie.name.clone());
+                cookies.set(this_cookie.name, this_cookie.value.unwrap());
+            }
         }
 
         Ok(cookies)

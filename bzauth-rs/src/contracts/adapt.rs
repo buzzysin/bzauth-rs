@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use super::{Account, Session, User};
+use super::{account::Account, session::Session, user::User};
 
 pub struct AdaptUser {
     pub user: User,

@@ -17,6 +17,7 @@ impl std::fmt::Display for CoreError {
 impl std::error::Error for CoreError {}
 
 impl CoreError {
+    /// Creates a new `CoreError` with a default status of 500 and a generic message.
     pub fn new() -> Self {
         CoreError {
             status: http::StatusCode::INTERNAL_SERVER_ERROR.into(),
@@ -43,7 +44,7 @@ impl From<CoreError> for CoreResponse {
         CoreResponse {
             status: http::StatusCode::from_u16(error.status)
                 .unwrap_or(http::StatusCode::BAD_REQUEST),
-            body: Some(error.message),
+            payload: Some(error.message),
             headers: Default::default(),
             cookies: Cookies::new(),
         }
@@ -53,5 +54,19 @@ impl From<CoreError> for CoreResponse {
 impl Default for CoreError {
     fn default() -> Self {
         CoreError::new()
+    }
+}
+
+/// Converts a CoreError into a Result type with the same error type.
+impl<T> From<CoreError> for Result<T, CoreError> {
+    fn from(err: CoreError) -> Self {
+        Err(err)
+    }
+}
+
+/// Converts a ParseError from the `oauth2` crate into a `CoreError`.
+impl From<oauth2::url::ParseError> for CoreError {
+    fn from(err: oauth2::url::ParseError) -> Self {
+        CoreError::new().with_message(err.to_string())
     }
 }

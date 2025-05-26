@@ -15,7 +15,7 @@ macro_rules! adapt_diesel_user {
     ($table_struct:ident, $connection:ident, Model = $model_type:path, Table = $table_type:path) => {
         impl From<$model_type> for $crate::contracts::adapt::AdaptUser {
             fn from(user: $model_type) -> Self {
-                $crate::contracts::User {
+                $crate::contracts::user::User {
                     id: Some(user.id),
                     username: user.name,
                     email: user.email,
@@ -27,7 +27,7 @@ macro_rules! adapt_diesel_user {
 
         impl From<$crate::contracts::adapt::AdaptUser> for $model_type {
             fn from(user: $crate::contracts::adapt::AdaptUser) -> Self {
-                let user: $crate::contracts::User = user.into();
+                let user: $crate::contracts::user::User = user.into();
 
                 $model_type {
                     name: user.username,
@@ -182,12 +182,12 @@ macro_rules! adapt_diesel_account {
         impl From<$model_type> for $crate::contracts::adapt::AdaptAccount {
             fn from(account: $model_type) -> Self {
                 #[allow(unreachable_code)]
-                $crate::contracts::Account {
+                $crate::contracts::account::Account {
                     id: account.id.into(),
                     user_id: account.user_id.into(),
                     provider_id: account.provider_id.into(),
                     // session_state: account.session_state.into(),
-                    token: $crate::contracts::Token {
+                    token: $crate::contracts::token::Token {
                         access_token: account.access_token.into(),
                         token_type: account.token_type.into(),
                         refresh_token: account.refresh_token.into(),
@@ -215,7 +215,7 @@ macro_rules! adapt_diesel_account {
 
         impl From<$crate::contracts::adapt::AdaptAccount> for $model_type {
             fn from(account: $crate::contracts::adapt::AdaptAccount) -> Self {
-                let account: $crate::contracts::Account = account.into();
+                let account: $crate::contracts::account::Account = account.into();
                 let token = account.token.clone().unwrap();
                 $model_type {
                     id: account.id.unwrap(),
