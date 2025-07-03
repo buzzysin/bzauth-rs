@@ -1,20 +1,28 @@
-use crate::contracts::{account::Account, adapt::Adapt, provide::Provide, user::User};
+use std::sync::Arc;
 
+use crate::{
+    contracts::{account::Account, adapt::Adapt, profile::Profile, provide::Provide, user::User},
+    tools::awaitable::Awaitable,
+};
+
+#[derive(Debug, Clone)]
 pub struct SignInOptions {
-    pub user: Box<User>,
-    pub account: Option<Box<Account>>,
-    pub profile: Option<Box<User>>,
+    pub user: Option<User>,
+    pub account: Option<Account>,
+    pub profile: Option<Profile>,
 }
 
+#[derive(Debug, Clone)]
 pub enum SignInResult {
     Success,
     Redirect(String),
     Error(String),
 }
+pub type SignInCallback = Arc<fn(SignInOptions) -> Awaitable<SignInResult>>;
 
 #[derive(Clone, Default)]
 pub struct AuthCallbackOptions {
-    pub sign_in: Option<fn(SignInOptions) -> dyn Future<Output = SignInResult>>,
+    pub sign_in: Option<SignInCallback>,
 }
 
 #[derive(Clone, Default)]
@@ -52,10 +60,7 @@ impl AuthOptions {
             ..self
         }
     }
-    pub fn with_callback(
-        self,
-        callback: fn(SignInOptions) -> dyn Future<Output = SignInResult>,
-    ) -> Self {
+    pub fn with_callback(self, callback: SignInCallback) -> Self {
         let mut callbacks = self.callbacks.unwrap_or_default();
         callbacks.sign_in = Some(callback);
         Self {
@@ -84,5 +89,9 @@ pub struct Auth {
 impl Auth {
     pub fn from_options(options: AuthOptions) -> Self {
         Self { options }
+    }
+
+    pub fn adaptor(&self) -> Option<&dyn Adapt> {
+        self.options.adaptor.as_ref().map(|a| a.as_ref())
     }
 }

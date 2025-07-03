@@ -1,4 +1,5 @@
 use oauth2::CsrfToken;
+use serde::{Deserialize, Serialize};
 
 use crate::tools::{
     cookie::Cookies,
@@ -10,7 +11,15 @@ use crate::{
     tools::{CoreError, request::CoreRequest, response::CoreResponse},
 };
 
-pub async fn authorise(request: CoreRequest) -> Result<CoreResponse, CoreError> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthoriseRequest {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthoriseResponse {}
+
+pub async fn authorise(
+    request: CoreRequest<AuthoriseRequest>,
+) -> Result<CoreResponse<AuthoriseResponse>, CoreError> {
     // Extract the provider from the request
     let provider = request.extract_provider()?;
 
@@ -26,7 +35,9 @@ pub async fn authorise(request: CoreRequest) -> Result<CoreResponse, CoreError> 
     }
 }
 
-async fn authorise_oauth2(request: CoreRequest) -> Result<CoreResponse, CoreError> {
+async fn authorise_oauth2(
+    request: CoreRequest<AuthoriseRequest>,
+) -> Result<CoreResponse<AuthoriseResponse>, CoreError> {
     // Stage the response with the request data
     let mut response = CoreResponse::from_request(&request);
 
@@ -73,7 +84,9 @@ async fn authorise_oauth2(request: CoreRequest) -> Result<CoreResponse, CoreErro
 }
 
 // ignore
-async fn authorise_email(request: CoreRequest) -> Result<CoreResponse, CoreError> {
+async fn authorise_email(
+    request: CoreRequest<AuthoriseRequest>,
+) -> Result<CoreResponse<AuthoriseResponse>, CoreError> {
     // Handle email provider authorisation
     let provider = request.extract_provider()?;
     let provider_type = provider.provider_type();
@@ -86,7 +99,9 @@ async fn authorise_email(request: CoreRequest) -> Result<CoreResponse, CoreError
 }
 
 // ignore
-async fn authorise_credentials(request: CoreRequest) -> Result<CoreResponse, CoreError> {
+async fn authorise_credentials(
+    request: CoreRequest<AuthoriseRequest>,
+) -> Result<CoreResponse<AuthoriseResponse>, CoreError> {
     // Handle credentials provider authorisation
     let provider = request.extract_provider()?;
     let provider_type = provider.provider_type();
@@ -99,7 +114,9 @@ async fn authorise_credentials(request: CoreRequest) -> Result<CoreResponse, Cor
 }
 
 // ignore
-async fn authorise_oidc(request: CoreRequest) -> Result<CoreResponse, CoreError> {
+async fn authorise_oidc(
+    request: CoreRequest<AuthoriseRequest>,
+) -> Result<CoreResponse<AuthoriseResponse>, CoreError> {
     // Handle OIDC provider authorisation
     let provider = request.extract_provider()?;
     let provider_type = provider.provider_type();

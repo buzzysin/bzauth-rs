@@ -2,19 +2,21 @@ use std::{collections::HashMap, sync::Arc};
 
 use http::Uri;
 use http::{HeaderMap, HeaderName};
+use serde::de::DeserializeOwned;
 
 use super::cookie::Cookies;
-use crate::auth::Auth;
+use crate::{auth::Auth, tools::response::RequestPayload};
 
 #[derive(Clone)]
-pub struct CoreRequest<Body = String> {
+pub struct CoreRequest<T = ()> {
     path: String,
     method: String,
     uri: Uri,
     headers: HeaderMap,
     cookies: Cookies,
-    body: Option<Body>,
+    body: Option<String>,
     auth: Option<Arc<Auth>>,
+    _phantom: std::marker::PhantomData<T>,
 }
 
 impl<T> CoreRequest<T> {
@@ -26,6 +28,30 @@ impl<T> CoreRequest<T> {
         cookies: Cookies,
         body: Option<T>,
         auth: Option<Arc<Auth>>,
+    ) -> Self
+    where
+        T: RequestPayload,
+    {
+        Self {
+            path,
+            method,
+            uri,
+            headers,
+            cookies,
+            body: body.map(|b| serde_json::to_string(&b).unwrap()),
+            auth,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn new_unchecked(
+        path: String,
+        method: String,
+        uri: Uri,
+        headers: HeaderMap,
+        cookies: Cookies,
+        body: Option<String>,
+        auth: Option<Arc<Auth>>,
     ) -> Self {
         Self {
             path,
@@ -33,8 +59,9 @@ impl<T> CoreRequest<T> {
             uri,
             headers,
             cookies,
-            body,
+            body, // careful - we didn't check if this is a valid RequestPayload
             auth,
+            _phantom: std::marker::PhantomData,
         }
     }
 
@@ -82,8 +109,21 @@ impl<T> CoreRequest<T> {
         &self.cookies
     }
 
-    pub fn body(&self) -> Option<&T> {
-        self.body.as_ref()
+    pub fn body(&self) -> Option<T>
+    where
+        T: RequestPayload + DeserializeOwned,
+    {
+        self.body
+            .as_ref()
+            .and_then(|body| serde_json::from_str(body).ok())
+    }
+
+    pub fn map_body<F, U>(&self, f: F) -> Option<U>
+    where
+        F: FnOnce(T) -> U,
+        T: RequestPayload + DeserializeOwned,
+    {
+        self.body().map(f)
     }
 
     pub fn auth(&self) -> Option<&Arc<Auth>> {

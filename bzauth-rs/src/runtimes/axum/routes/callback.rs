@@ -2,14 +2,17 @@ use axum::extract::Request;
 
 use crate::{
     runtimes::axum::extractors::auth::ExtractAuth,
-    tools::{self, CoreError, TryFromAsync, request::CoreRequest, response::CoreResponse},
+    tools::{
+        self, CallbackResponse, CoreError, TryFromAsync, request::CoreRequest,
+        response::CoreResponse,
+    },
 };
 
 #[axum::debug_handler]
 pub async fn callback(
     ExtractAuth(auth): ExtractAuth,
     request: Request,
-) -> Result<CoreResponse, CoreError> {
+) -> Result<CoreResponse<CallbackResponse>, CoreError> {
     // Pass to internal handler
     let core_request = CoreRequest::try_from_async(request).await?.with_auth(auth);
     tools::callback(core_request).await

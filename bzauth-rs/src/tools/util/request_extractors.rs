@@ -1,7 +1,11 @@
 use std::sync::Arc;
 
 use super::generators::{Oauth2Client, generate_client_from_auth};
-use crate::{auth::Auth, tools::request::CoreRequest};
+use crate::{
+    auth::Auth,
+    contracts::adapt::Adapt,
+    tools::{request::CoreRequest, response::RequestPayload},
+};
 use crate::{contracts::provide::Provide, tools::CoreError};
 
 pub enum UtilError {
@@ -24,7 +28,7 @@ impl From<UtilError> for CoreError {
 }
 
 /// Extends the CoreRequest object
-impl CoreRequest {
+impl<T: RequestPayload> CoreRequest<T> {
     /// Extracts the auth object from the request.
     pub fn extract_auth(&self) -> Result<Arc<Auth>, UtilError> {
         self.auth()
@@ -55,6 +59,16 @@ impl CoreRequest {
             .clone();
 
         Ok(provider)
+    }
+
+    pub fn extract_adaptor(&self) -> Result<&dyn Adapt, UtilError> {
+        let adaptor = self
+            .auth()
+            .ok_or_else(|| UtilError::MissingAuth("Auth not found".to_string()))?
+            .adaptor()
+            .ok_or_else(|| UtilError::MissingAuth("Adaptor not found".to_string()))?;
+
+        Ok(adaptor)
     }
 
     /// Extracts the authorization code from the request query parameters.

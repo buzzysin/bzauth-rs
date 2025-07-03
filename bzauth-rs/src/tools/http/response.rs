@@ -6,18 +6,22 @@ use serde::Serialize;
 use super::request::CoreRequest;
 use crate::tools::Cookies;
 
-pub trait ValidPayload: Clone + Serialize {}
-impl<T> ValidPayload for T where T: Clone + Serialize {}
+pub trait RequestPayload: Clone + Serialize {}
+impl<T> RequestPayload for T where T: Clone + Serialize {}
+
+pub trait ResponsePayload: Clone + serde::de::DeserializeOwned {}
+impl<T> ResponsePayload for T where T: Clone + serde::de::DeserializeOwned {}
 
 #[derive(Debug, Clone)]
-pub struct CoreResponse<Payload = String> {
+pub struct CoreResponse<T = ()> {
     pub status: StatusCode,
     pub headers: HeaderMap,
     pub cookies: Cookies,
-    pub payload: Option<Payload>,
+    pub payload: Option<String>,
+    _phantom: std::marker::PhantomData<T>,
 }
 
-impl<Payload> CoreResponse<Payload> {
+impl<T> CoreResponse<T> {
     // Constructors/builders
 
     /// Creates a new CoreResponse with default values.
@@ -27,6 +31,7 @@ impl<Payload> CoreResponse<Payload> {
             headers: HeaderMap::new(),
             cookies: Cookies::new(),
             payload: None,
+            _phantom: std::marker::PhantomData,
         }
     }
 
@@ -37,14 +42,12 @@ impl<Payload> CoreResponse<Payload> {
             headers: HeaderMap::new(),
             cookies: Cookies::new(),
             payload: None,
+            _phantom: std::marker::PhantomData,
         }
     }
 
     /// Creates a new CoreResponse that redirects to the specified location. Status code is set to 302 Found.
-    pub fn redirect(location: String) -> Self
-    where
-        Payload: Default,
-    {
+    pub fn redirect(location: String) -> Self {
         let mut headers = HeaderMap::new();
         headers.insert(
             http::header::LOCATION,
@@ -58,32 +61,29 @@ impl<Payload> CoreResponse<Payload> {
             headers,
             cookies: Cookies::new(),
             payload: None,
+            _phantom: std::marker::PhantomData,
         }
     }
 
     /// Creates a new CoreResponse with a 404 Not Found status.
-    pub fn not_found() -> Self
-    where
-        Payload: Default,
-    {
+    pub fn not_found() -> Self {
         CoreResponse {
             status: StatusCode::NOT_FOUND,
             headers: HeaderMap::new(),
             cookies: Cookies::new(),
             payload: None,
+            _phantom: std::marker::PhantomData,
         }
     }
 
     /// Creates a new CoreResponse with a 500 Internal Server Error status.
-    pub fn internal_server_error() -> Self
-    where
-        Payload: Default,
-    {
+    pub fn internal_server_error() -> Self {
         CoreResponse {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             headers: HeaderMap::new(),
             cookies: Cookies::new(),
             payload: None,
+            _phantom: std::marker::PhantomData,
         }
     }
 
@@ -121,7 +121,7 @@ impl<Payload> CoreResponse<Payload> {
             http::header::LOCATION,
             location
                 .parse()
-                .unwrap_or_else(|_| "http://localhost".parse().unwrap()),
+                .unwrap_or_else(|_| "http://localhost:3000".parse().unwrap()),
         );
 
         CoreResponse {
@@ -152,17 +152,21 @@ impl<Payload> CoreResponse<Payload> {
         CoreResponse { status, ..self }
     }
 
-    pub fn from_request(request: &CoreRequest) -> Self {
+    pub fn from_request<U>(request: &CoreRequest<U>) -> Self
+    where
+        U: RequestPayload,
+    {
         // Copy headers and cookies from the request
         CoreResponse {
             status: StatusCode::OK,
             headers: request.headers().clone(),
             cookies: request.cookies().clone(),
             payload: None,
+            _phantom: std::marker::PhantomData,
         }
     }
 
-    pub fn with_session(self, request: &CoreRequest) -> Self {
+    pub fn with_session(self, request: &CoreRequest<T>) -> Self {
         // Merge the cookies from the request into the response
         let mut cookies = self.cookies.clone();
         cookies.extend(request.cookies().clone());
@@ -175,12 +179,13 @@ impl<Payload> CoreResponse<Payload> {
             headers,
             cookies,
             payload: self.payload,
+            _phantom: std::marker::PhantomData,
         }
     }
 
-    pub fn with_payload<T>(self, payload: T) -> CoreResponse
+    pub fn with_payload<U>(self, payload: U) -> CoreResponse<U>
     where
-        T: ValidPayload,
+        U: RequestPayload,
     {
         let mut headers = self.headers.clone();
         headers.insert(
@@ -196,6 +201,7 @@ impl<Payload> CoreResponse<Payload> {
                 tracing::error!("Failed to serialize payload");
                 String::new()
             })),
+            _phantom: std::marker::PhantomData,
         }
     }
 
@@ -221,12 +227,27 @@ impl<Payload> CoreResponse<Payload> {
         &mut self.cookies
     }
 
-    pub fn body(&self) -> Option<&Payload> {
-        self.payload.as_ref()
+    pub fn body(&self) -> Option<T>
+    where
+        T: RequestPayload + serde::de::DeserializeOwned,
+    {
+        self.payload
+            .as_ref()
+            .and_then(|body| serde_json::from_str(body).ok())
+            .or_else(|| {
+                tracing::warn!("Response body is not set or cannot be deserialized");
+                None
+            })
     }
 
-    pub fn body_mut(&mut self) -> &mut Option<Payload> {
-        &mut self.payload
+    pub fn set_body<U>(&mut self, body: U)
+    where
+        U: RequestPayload,
+    {
+        self.payload = Some(serde_json::to_string(&body).unwrap_or_else(|_| {
+            tracing::error!("Failed to serialize response body");
+            String::new()
+        }));
     }
 }
 

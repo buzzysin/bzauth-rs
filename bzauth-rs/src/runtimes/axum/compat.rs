@@ -5,10 +5,13 @@ use axum::{Json, RequestExt, extract::Request, response::IntoResponse};
 use serde::Serialize;
 
 use crate::tools::{
-    CoreError, request::CoreRequest, response::CoreResponse, try_async::TryFromAsync,
+    CoreError,
+    request::CoreRequest,
+    response::{CoreResponse, RequestPayload},
+    try_async::TryFromAsync,
 };
 
-impl TryFromAsync<Request> for CoreRequest {
+impl<T: RequestPayload> TryFromAsync<Request> for CoreRequest<T> {
     type Error = CoreError;
 
     async fn try_from_async(request: Request) -> Result<Self, Self::Error> {
@@ -35,7 +38,7 @@ impl TryFromAsync<Request> for CoreRequest {
             .map_err(|_| CoreError::new().with_message("Failed to extract body".to_string()));
 
         // Create the CoreRequest
-        Ok(CoreRequest::new(
+        Ok(CoreRequest::new_unchecked(
             path,
             method,
             uri,
@@ -52,11 +55,14 @@ where
     T: Serialize,
 {
     fn into_response(self) -> axum::response::Response {
-        let mut response = axum::response::Response::new("".into());
+        let mut response = axum::response::Response::default();
 
         // Set the body
         if let Some(body) = self.payload {
-            *response.body_mut() = Json::<T>(body).into_response().into_body();
+            *response.body_mut() = axum::body::Body::from(
+                serde_json::to_string(&body)
+                    .unwrap_or_else(|_| "Failed to serialize response".to_string()),
+            );
         }
 
         // Set the status code

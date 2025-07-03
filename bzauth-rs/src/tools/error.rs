@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Cookies, response::CoreResponse};
+use super::response::CoreResponse;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CoreError {
@@ -39,15 +39,13 @@ impl CoreError {
     }
 }
 
-impl From<CoreError> for CoreResponse {
+impl From<CoreError> for CoreResponse<String> {
     fn from(error: CoreError) -> Self {
-        CoreResponse {
-            status: http::StatusCode::from_u16(error.status)
-                .unwrap_or(http::StatusCode::BAD_REQUEST),
-            payload: Some(error.message),
-            headers: Default::default(),
-            cookies: Cookies::new(),
-        }
+        CoreResponse::<String>::new()
+            .with_status(
+                http::StatusCode::from_u16(error.status).unwrap_or(http::StatusCode::BAD_REQUEST),
+            )
+            .with_payload(error.message)
     }
 }
 

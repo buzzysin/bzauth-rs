@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use super::error::ProviderError;
 use crate::contracts::{
     endpoint::Endpoint,
-    provide::{ProvideOAuth2, ProviderType},
+    profile::Profile,
+    provide::{ProvideOAuth2, ProviderType, ProvidesProfile},
     user::User,
 };
 
@@ -26,7 +27,7 @@ pub struct DiscordProvider {
     auth_endpoint: Endpoint,
     token_endpoint: Endpoint,
     profile_endpoint: Endpoint,
-    _profile: fn(profile: DiscordProfile) -> Box<User>,
+    profile_resolver: fn(profile: DiscordProfile) -> Box<User>,
     _options: DiscordProviderOptions,
 }
 
@@ -77,35 +78,12 @@ impl DiscordProvider {
             )),
             token_endpoint: "https://discord.com/api/oauth2/token".into(),
             profile_endpoint: "https://discord.com/api/users/@me".into(),
-            _profile: |profile| {
+            profile_resolver: |profile| {
                 let mut profile = profile;
-
-                profile.image_url = if let Some(avatar) = profile.avatar {
-                    let extension = if avatar.starts_with("a_") {
-                        "gif"
-                    } else {
-                        "png"
-                    };
-
-                    Some(format!(
-                        "https://cdn.discordapp.com/embed/avatars/{}.{}",
-                        profile.id, extension
-                    ))
-                } else {
-                    let default_avatar_number = if profile.discriminator == "0" {
-                        profile.id.parse::<u32>().unwrap() >> 22
-                    } else {
-                        profile.discriminator.parse::<u32>().unwrap() % 5
-                    };
-
-                    Some(format!(
-                        "https://cdn.discordapp.com/embed/avatars/{}.png",
-                        default_avatar_number
-                    ))
-                };
+                profile.image_url = derive_avatar_image(&profile);
 
                 Box::new(User {
-                    id: Some("".to_string()),
+                    id: Some(profile.id),
                     username: Some(profile.username),
                     email: profile.email,
                     image: profile.image_url,
@@ -115,6 +93,35 @@ impl DiscordProvider {
         };
 
         Ok(provider)
+    }
+}
+
+fn derive_avatar_image(profile: &DiscordProfile) -> Option<String> {
+    if let Some(avatar) = &profile.avatar {
+        // If the avatar starts with "a_", it's an animated avatar (GIF)
+        let extension = if avatar.starts_with("a_") {
+            "gif"
+        }
+        // Otherwise, it's a static avatar (PNG)
+        else {
+            "png"
+        };
+
+        Some(format!(
+            "https://cdn.discordapp.com/avatars/{}/{}.{}?size={}",
+            profile.id, avatar, extension, 1024
+        ))
+    } else {
+        let default_avatar_number = if profile.discriminator == "0" {
+            profile.id.parse::<u32>().unwrap() >> 22
+        } else {
+            profile.discriminator.parse::<u32>().unwrap() % 5
+        };
+
+        Some(format!(
+            "https://cdn.discordapp.com/embed/avatars/{}.png",
+            default_avatar_number
+        ))
     }
 }
 
@@ -154,5 +161,48 @@ impl ProvideOAuth2 for DiscordProvider {
     }
     fn profile_endpoint(&self) -> Endpoint {
         self.profile_endpoint.clone()
+    }
+}
+
+impl From<Profile> for DiscordProfile {
+    fn from(value: Profile) -> Self {
+        let id = value.id.unwrap();
+
+        let username = value
+            .others
+            .get("username")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+
+        let discriminator = value
+            .others
+            .get("discriminator")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+
+        let avatar = value
+            .others
+            .get("avatar")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let email = value.email;
+
+        DiscordProfile {
+            id,
+            username,
+            discriminator,
+            avatar,
+            image_url: None, // Will be set later
+            email,
+        }
+    }
+}
+
+impl ProvidesProfile for DiscordProvider {
+    fn get_profile(&self, profile: Profile) -> Box<User> {
+        (self.profile_resolver)(profile.into())
     }
 }

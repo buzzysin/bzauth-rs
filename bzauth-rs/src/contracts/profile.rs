@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
 /// Represents the profile of a user, as returned by an OAuth2 provider. Not every field is guaranteed to be present.
 /// https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims
+///
 /// Note: GDPR warning - a lot of these fields are considered personal data.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -28,7 +27,9 @@ pub struct Profile {
     pub phone_number: Option<String>,
     pub updated_at: Option<u64>,
     pub address: Option<ProfileAddress>,
-    pub others: HashMap<String, String>,
+
+    #[serde(flatten)]
+    pub others: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

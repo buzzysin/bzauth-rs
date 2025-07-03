@@ -3,10 +3,12 @@ use std::collections::HashMap;
 use super::error::ProviderError;
 use crate::contracts::{
     endpoint::Endpoint,
-    provide::{ProvideOAuth2, ProviderType},
+    profile::Profile,
+    provide::{ProvideOAuth2, ProviderType, ProvidesProfile},
     user::User,
 };
 
+#[derive(Debug, Clone, Default)]
 pub struct GoogleProfile {
     pub aud: String,
     pub azp: String,
@@ -137,14 +139,46 @@ impl ProvideOAuth2 for GoogleProvider {
     }
 }
 
-//
-// fn get_profile(&self) -> fn(GoogleProfile) -> Box<User> {
-//     self.profile
-// }
+impl From<Profile> for GoogleProfile {
+    #[allow(unused_variables)]
+    fn from(value: Profile) -> Self {
+        // Pick from others: aud, azp, exp, hd, iat, iss
+        let aud = value.others.get("aud").cloned().unwrap_or_default();
+        let azp = value.others.get("azp").cloned().unwrap_or_default();
+        let exp = value
+            .others
+            .get("exp")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
+        let iat = value
+            .others
+            .get("iat")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
+        let hd = value.others.get("hd").cloned().unwrap_or_default();
+        let iss = value.others.get("iss").cloned().unwrap_or_default();
 
-// Allows implicit conversion from GoogleProvider to Box<dyn Provide>
-// impl From<GoogleProvider> for Box<dyn Provide> {
-//     fn from(provider: GoogleProvider) -> Self {
-//         Box::new(provider)
-//     }
-// }
+        GoogleProfile {
+            // aud: value.aud,
+            // azp: value.azp,
+            email: value.email.unwrap(),
+            email_verified: value.email_verified.unwrap_or(false),
+            // exp: value.exp,
+            family_name: value.family_name.unwrap_or_default(),
+            given_name: value.given_name.unwrap_or_default(),
+            // hd: value.hd.unwrap_or_default(),
+            // iat: value.iat,
+            // iss: value.iss,
+            name: value.name.unwrap_or_default(),
+            picture: value.picture.unwrap_or_default(),
+            sub: value.sub.unwrap_or_default(),
+            ..Default::default()
+        }
+    }
+}
+
+impl ProvidesProfile for GoogleProvider {
+    fn get_profile(&self, profile: Profile) -> Box<User> {
+        (self._profile)(profile.into())
+    }
+}

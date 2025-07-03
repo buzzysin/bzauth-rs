@@ -9,6 +9,7 @@ adapt_diesel = ["diesel"]
 adapt_sqlx = []
 runtime_axum = ["axum"]
 runtime_actix = []
+backend_sqlite = ["diesel/sqlite"]
 
 [dependencies]
 # Core dependencies
@@ -43,6 +44,6 @@ url = "2.5.4"
 rand = "0.9.1"
 tracing = { version = "0.1.41", features = ["std"] }
 tracing-subscriber = { version = "0.3.19", features = ["std"] }
-# rand_distr = "0.5.1"
+uuid = { version = "1.8.0", features = ["v4"] }
 
 [dev-dependencies]

@@ -1,5 +1,6 @@
 // Pub modules for the cogs
 
+pub mod actions;
 pub mod error;
 pub mod http;
 pub mod routes;

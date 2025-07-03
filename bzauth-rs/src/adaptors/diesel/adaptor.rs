@@ -1,9 +1,13 @@
 use diesel::r2d2::{ManageConnection, Pool};
 
 use super::traits::*;
-use crate::contracts::adapt::{
-    Adapt, AdaptAccount, AdaptSession, AdaptUser, AdaptVerificationToken, CreateSessionOptions,
-    ProviderAccountId, SessionUser, UseVerificationTokenOptions,
+use crate::{
+    awaitable,
+    contracts::adapt::{
+        Adapt, AdaptAccount, AdaptSession, AdaptUser, AdaptVerificationToken, CreateSessionOptions,
+        ProviderAccountId, SessionUser, UseVerificationTokenOptions,
+    },
+    tools::awaitable::Awaitable,
 };
 
 pub struct DieselAdapterOptions<
@@ -65,25 +69,24 @@ where
     }
 }
 
-#[async_trait::async_trait]
 impl<M, Adaptor, UserModel, AccountModel, SessionModel, VerificationTokenModel> Adapt
     for DieselAdaptor<M, Adaptor, UserModel, AccountModel, SessionModel, VerificationTokenModel>
 where
     M: ManageConnection,
     AdaptUser: From<UserModel> + 'static,
-    UserModel: From<AdaptUser> + 'static,
+    UserModel: From<AdaptUser> + Send + 'static,
     Adaptor: AdaptUserOperation<M::Connection, Model = UserModel>,
     AdaptAccount: From<AccountModel> + 'static,
-    AccountModel: From<AdaptAccount> + 'static,
+    AccountModel: From<AdaptAccount> + Send + 'static,
     Adaptor: AdaptAccountOperation<M::Connection, Model = AccountModel, User = UserModel>,
     AdaptSession: From<SessionModel> + 'static,
-    SessionModel: From<AdaptSession> + 'static,
+    SessionModel: From<AdaptSession> + Send + 'static,
     Adaptor: AdaptSessionOperation<M::Connection, Model = SessionModel, User = UserModel>,
     AdaptVerificationToken: From<VerificationTokenModel> + 'static,
-    VerificationTokenModel: From<AdaptVerificationToken> + 'static,
+    VerificationTokenModel: From<AdaptVerificationToken> + Send + 'static,
     Adaptor: AdaptVerificationTokenOperation<M::Connection, Model = VerificationTokenModel>,
 {
-    async fn create_user(&self, user: AdaptUser) -> AdaptUser {
+    fn create_user(&self, user: AdaptUser) -> Awaitable<AdaptUser> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -99,10 +102,10 @@ where
         let new_user = adaptor.create_user(&mut conn, &user.into());
 
         // Return the created user
-        AdaptUser::from(new_user)
+        awaitable!(AdaptUser::from(new_user))
     }
 
-    async fn get_user(&self, id: String) -> Option<AdaptUser> {
+    fn get_user(&self, id: String) -> Awaitable<Option<AdaptUser>> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -115,10 +118,10 @@ where
         // Get the user from the database
         let user = adaptor.find_user_by_id(&mut conn, &id);
         // Return the user
-        user.map(|user| AdaptUser::from(user))
+        awaitable!(user.map(|user| AdaptUser::from(user)))
     }
 
-    async fn get_user_by_email(&self, email: String) -> Option<AdaptUser> {
+    fn get_user_by_email(&self, email: String) -> Awaitable<Option<AdaptUser>> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -131,9 +134,9 @@ where
         // Get the user from the database
         let user = adaptor.find_user_by_email(&mut conn, &email);
         // Return the user
-        user.map(|user| AdaptUser::from(user))
+        awaitable!(user.map(|user| AdaptUser::from(user)))
     }
-    async fn get_user_by_account(&self, provider: ProviderAccountId) -> Option<AdaptUser> {
+    fn get_user_by_account(&self, provider: ProviderAccountId) -> Awaitable<Option<AdaptUser>> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -154,10 +157,10 @@ where
         let pick_last = |(_, b)| b;
 
         // Return the user
-        account.map(pick_last).map(|user| AdaptUser::from(user))
+        awaitable!(account.map(pick_last).map(|user| AdaptUser::from(user)))
     }
     /// Id is required
-    async fn update_user(&self, user: AdaptUser) -> AdaptUser {
+    fn update_user(&self, user: AdaptUser) -> Awaitable<AdaptUser> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -171,9 +174,9 @@ where
         // Update the user in the database
         let updated_user = adaptor.update_user(&mut conn, &user.into());
         // Return the updated user
-        AdaptUser::from(updated_user)
+        awaitable!(AdaptUser::from(updated_user))
     }
-    async fn delete_user(&self, id: String) {
+    fn delete_user(&self, id: String) -> Awaitable<()> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -190,9 +193,10 @@ where
 
         // Return the user
         // AdaptUser::from(updated_user)
+        awaitable!(())
     }
 
-    async fn get_account(&self, provider: ProviderAccountId) -> Option<AdaptAccount> {
+    fn get_account(&self, provider: ProviderAccountId) -> Awaitable<Option<AdaptAccount>> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -209,10 +213,10 @@ where
             provider.provider_account_id,
         );
         // Return the account
-        account.map(|account| AdaptAccount::from(account))
+        awaitable!(account.map(|account| AdaptAccount::from(account)))
     }
 
-    async fn link_account(&self, account: AdaptAccount) -> Option<AdaptAccount> {
+    fn link_account(&self, account: AdaptAccount) -> Awaitable<Option<AdaptAccount>> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -225,9 +229,9 @@ where
         // Link the account in the database
         let new_account = adaptor.link_account(&mut conn, &account.into());
         // Return the linked account
-        Some(AdaptAccount::from(new_account))
+        awaitable!(Some(AdaptAccount::from(new_account)))
     }
-    async fn unlink_account(&self, provider: ProviderAccountId) {
+    fn unlink_account(&self, provider: ProviderAccountId) -> Awaitable<()> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -245,9 +249,10 @@ where
         );
         // Return the account
         // AdaptAccount::from(updated_user)
+        awaitable!(())
     }
 
-    async fn create_session(&self, options: CreateSessionOptions) -> Option<AdaptSession> {
+    fn create_session(&self, options: CreateSessionOptions) -> Awaitable<Option<AdaptSession>> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -268,9 +273,9 @@ where
             .into(),
         );
         // Return the created session
-        Some(AdaptSession::from(new_session))
+        awaitable!(Some(AdaptSession::from(new_session)))
     }
-    async fn get_session_and_user(&self, token: String) -> Option<SessionUser> {
+    fn get_session_and_user(&self, token: String) -> Awaitable<Option<SessionUser>> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -283,12 +288,14 @@ where
         // Get the session from the database
         let session_user = adaptor.find_session_and_user(&mut conn, &token);
         // Return the session and user
-        session_user
-            .map(|(session, user)| (AdaptSession::from(session), AdaptUser::from(user)))
-            .map(|(session, user)| SessionUser { session, user })
+        awaitable! {
+            session_user
+                .map(|(session, user)| (AdaptSession::from(session), AdaptUser::from(user)))
+                .map(|(session, user)| SessionUser { session, user })
+        }
     }
     /// session_token required
-    async fn update_session(&self, session: AdaptSession) -> AdaptSession {
+    fn update_session(&self, session: AdaptSession) -> Awaitable<AdaptSession> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -301,9 +308,9 @@ where
         // Update the session in the database
         let updated_session = adaptor.update_session(&mut conn, session.into());
         // Return the updated session
-        AdaptSession::from(updated_session)
+        awaitable!(AdaptSession::from(updated_session))
     }
-    async fn delete_session(&self, token: String) {
+    fn delete_session(&self, token: String) -> Awaitable<()> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -317,12 +324,13 @@ where
         adaptor.delete_session(&mut conn, &token);
         // Return the session
         // AdaptSession::from(updated_session)
+        awaitable!(())
     }
 
-    async fn create_verification_token(
+    fn create_verification_token(
         &self,
         token: AdaptVerificationToken,
-    ) -> AdaptVerificationToken {
+    ) -> Awaitable<AdaptVerificationToken> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -335,12 +343,12 @@ where
         // Create the verification token in the database
         let new_token = adaptor.create_verification_token(&mut conn, token.into());
         // Return the created verification token
-        AdaptVerificationToken::from(new_token)
+        awaitable!(AdaptVerificationToken::from(new_token))
     }
-    async fn use_verification_token(
+    fn use_verification_token(
         &self,
         options: UseVerificationTokenOptions,
-    ) -> Option<AdaptVerificationToken> {
+    ) -> Awaitable<Option<AdaptVerificationToken>> {
         // Grab a connection from the pool
         let mut conn = self
             .options
@@ -355,7 +363,7 @@ where
         adaptor.use_verification_token(&mut conn, options.email.as_str(), options.token.as_str());
         // Return the used verification token
         // token.map(|token| AdaptVerificationToken::from(token))
-        None
+        awaitable!(None)
     }
 }
 
@@ -364,16 +372,16 @@ impl<M, Adaptor, UserModel, AccountModel, SessionModel, VerificationTokenModel>
     for Box<dyn Adapt>
 where
     M: ManageConnection,
-    UserModel: From<AdaptUser> + 'static,
+    UserModel: From<AdaptUser> + Send + 'static,
     AdaptUser: From<UserModel> + 'static,
     Adaptor: AdaptUserOperation<M::Connection, Model = UserModel>,
-    AccountModel: From<AdaptAccount> + 'static,
+    AccountModel: From<AdaptAccount> + Send + 'static,
     AdaptAccount: From<AccountModel> + 'static,
     Adaptor: AdaptAccountOperation<M::Connection, Model = AccountModel, User = UserModel>,
-    SessionModel: From<AdaptSession> + 'static,
+    SessionModel: From<AdaptSession> + Send + 'static,
     AdaptSession: From<SessionModel> + 'static,
     Adaptor: AdaptSessionOperation<M::Connection, Model = SessionModel, User = UserModel>,
-    VerificationTokenModel: From<AdaptVerificationToken> + 'static,
+    VerificationTokenModel: From<AdaptVerificationToken> + Send + 'static,
     AdaptVerificationToken: From<VerificationTokenModel> + 'static,
     Adaptor: AdaptVerificationTokenOperation<M::Connection, Model = VerificationTokenModel>,
 {

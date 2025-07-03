@@ -10,6 +10,11 @@ where
     fn delete_user(&self, conn: &mut C, id: &str);
 }
 
+// Doing this to hide the uuid dependency from the public API
+pub fn new_uuid() -> String {
+    uuid::Uuid::new_v4().to_string()
+}
+
 #[macro_export]
 macro_rules! adapt_diesel_user {
     ($table_struct:ident, $connection:ident, Model = $model_type:path, Table = $table_type:path) => {
@@ -30,6 +35,7 @@ macro_rules! adapt_diesel_user {
                 let user: $crate::contracts::user::User = user.into();
 
                 $model_type {
+                    id: user.id.unwrap(),
                     name: user.username,
                     email: user.email,
                     image: user.image,
@@ -49,9 +55,14 @@ macro_rules! adapt_diesel_user {
                     use $table_type::dsl::*;
                 }
 
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
+
                 let now = chrono::Utc::now().naive_utc();
 
                 let to_insert = (
+                    id.eq(user.id.clone()),
                     email.eq(user.email.clone()),
                     image.eq(user.image.clone()),
                     name.eq(user.name.clone()),
@@ -63,8 +74,8 @@ macro_rules! adapt_diesel_user {
                 let user = diesel::insert_into(paste::paste!($table_type::table))
                     .values(&to_insert)
                     .returning(paste::paste!($model_type::as_returning()))
-                    .on_conflict(paste::paste!($table_type::email))
-                    .do_nothing()
+                    /* .on_conflict(paste::paste!($table_type::email))
+                    .do_nothing() */
                     .get_result(conn)
                     .unwrap();
 
@@ -79,6 +90,10 @@ macro_rules! adapt_diesel_user {
                 paste::paste! {
                     use $table_type::dsl::*;
                 }
+
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
 
                 let user = paste::paste!($table_type::table)
                     .filter(id.eq(id))
@@ -101,6 +116,10 @@ macro_rules! adapt_diesel_user {
                     use $table_type::dsl::*;
                 }
 
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
+
                 let user = paste::paste!($table_type::table)
                     .filter(email.eq(email))
                     .first::<Self::Model>(conn)
@@ -116,6 +135,10 @@ macro_rules! adapt_diesel_user {
                 paste::paste! {
                     use $table_type::dsl::*;
                 }
+
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
 
                 let now = chrono::Utc::now().naive_utc();
 
@@ -143,6 +166,10 @@ macro_rules! adapt_diesel_user {
                 paste::paste! {
                     use $table_type::dsl::*;
                 }
+
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
 
                 diesel::delete(paste::paste!($table_type::table))
                     .filter(id.eq(id))
@@ -186,6 +213,8 @@ macro_rules! adapt_diesel_account {
                     id: account.id.into(),
                     user_id: account.user_id.into(),
                     provider_id: account.provider_id.into(),
+                    provider_type: account.provider_type.try_into().expect("Invalid provider type"),
+                    provider_account_id: account.provider_account_id.into(),
                     // session_state: account.session_state.into(),
                     token: $crate::contracts::token::Token {
                         access_token: account.access_token.into(),
@@ -216,11 +245,13 @@ macro_rules! adapt_diesel_account {
         impl From<$crate::contracts::adapt::AdaptAccount> for $model_type {
             fn from(account: $crate::contracts::adapt::AdaptAccount) -> Self {
                 let account: $crate::contracts::account::Account = account.into();
-                let token = account.token.clone().unwrap();
+                let token = account.token.clone().expect("Token is required");
                 $model_type {
-                    id: account.id.unwrap(),
-                    user_id: account.user_id.unwrap(),
-                    provider_id: account.provider_id.unwrap(),
+                    id: account.id.expect("ID is required"),
+                    provider_id: account.provider_id.expect("Provider ID is required"),
+                    provider_account_id: account.provider_account_id.expect("Provider Account ID is required"),
+                    user_id: account.user_id.expect("User ID is required"),
+                    provider_type: account.provider_type.into(),
                     access_token: token.access_token,
                     refresh_token: token.refresh_token,
                     expires_at: {
@@ -258,10 +289,18 @@ macro_rules! adapt_diesel_account {
                     use $table_type::dsl::*;
                 }
 
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
+
                 let now = chrono::Utc::now().naive_utc();
 
                 let to_insert = (
+                    id.eq(account.id.clone()),
+                    provider_id.eq(account.provider_id.clone()),
+                    provider_account_id.eq(account.provider_account_id.clone()),
                     user_id.eq(account.user_id.clone()),
+                    provider_type.eq(account.provider_type.clone()),
                     access_token.eq(account.access_token.clone()),
                     token_type.eq(account.token_type.clone()),
                     scope.eq(account.scope.clone()),
@@ -274,8 +313,8 @@ macro_rules! adapt_diesel_account {
                 let account = diesel::insert_into(paste::paste!($table_type::table))
                     .values(&to_insert)
                     .returning(paste::paste!($model_type::as_returning()))
-                    .on_conflict(paste::paste!($table_type::user_id))
-                    .do_nothing()
+                    // .on_conflict(paste::paste!($table_type::user_id))
+                    // .do_nothing()
                     .get_result(conn)
                     .unwrap();
 
@@ -292,10 +331,18 @@ macro_rules! adapt_diesel_account {
                     use $table_type::dsl::*;
                 }
 
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
+
                 let now = chrono::Utc::now().naive_utc();
 
                 let to_insert = (
+                    id.eq(account.id.clone()),
+                    provider_id.eq(account.provider_id.clone()),
+                    provider_account_id.eq(account.provider_account_id.clone()),
                     user_id.eq(account.user_id.clone()),
+                    provider_type.eq(account.provider_type.clone()),
                     access_token.eq(account.access_token.clone()),
                     token_type.eq(account.token_type.clone()),
                     scope.eq(account.scope.clone()),
@@ -308,8 +355,8 @@ macro_rules! adapt_diesel_account {
                 let account = diesel::insert_into(paste::paste!($table_type::table))
                     .values(&to_insert)
                     .returning(paste::paste!($model_type::as_returning()))
-                    .on_conflict(paste::paste!($table_type::user_id))
-                    .do_nothing()
+                    // .on_conflict(paste::paste!($table_type::user_id))
+                    // .do_nothing()
                     .get_result(conn)
                     .unwrap();
 
@@ -330,6 +377,10 @@ macro_rules! adapt_diesel_account {
                 paste::paste! {
                     use $table_type::dsl::*;
                 }
+
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
 
                 diesel::delete(paste::paste!($table_type::table))
                     .filter(provider_id.eq(provider_id))
@@ -352,6 +403,10 @@ macro_rules! adapt_diesel_account {
                 paste::paste! {
                     use $table_type::dsl::*;
                 }
+
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
 
                 let account_user = paste::paste!($table_type::table)
                     .filter(provider_id.eq(provider_id))
@@ -381,6 +436,10 @@ macro_rules! adapt_diesel_account {
                 paste::paste! {
                     use $table_type::dsl::*;
                 }
+
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
 
                 let account = paste::paste!($table_type::table)
                     .filter(provider_id.eq(provider_id))
@@ -454,9 +513,14 @@ macro_rules! adapt_diesel_session {
                     use $table_type::dsl::*;
                 }
 
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
+
                 let now = chrono::Utc::now().naive_utc();
 
                 let to_insert = (
+                    id.eq($crate::adaptors::diesel::new_uuid()),
                     user_id.eq(session.user_id.clone()),
                     token.eq(session.token.clone()),
                     expires_at.eq(session.expires_at.clone()),
@@ -467,8 +531,8 @@ macro_rules! adapt_diesel_session {
                 let session = diesel::insert_into(paste::paste!($table_type::table))
                     .values(&to_insert)
                     .returning(paste::paste!($model_type::as_returning()))
-                    .on_conflict(paste::paste!($table_type::user_id))
-                    .do_nothing()
+                    // .on_conflict(paste::paste!($table_type::user_id))
+                    // .do_nothing()
                     .get_result(conn)
                     .unwrap();
 
@@ -484,6 +548,10 @@ macro_rules! adapt_diesel_session {
                 paste::paste! {
                     use $table_type::dsl::*;
                 }
+
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
 
                 let now = chrono::Utc::now().naive_utc();
 
@@ -515,6 +583,11 @@ macro_rules! adapt_diesel_session {
                 paste::paste! {
                     use $table_type::dsl::*;
                 }
+
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
+
                 let session_user = paste::paste!($table_type::table)
                     .filter(token.eq(token))
                     .inner_join(paste::paste!($user_table_type::table))
@@ -537,6 +610,10 @@ macro_rules! adapt_diesel_session {
                 paste::paste! {
                     use $table_type::dsl::*;
                 }
+
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;")
+                    .execute(conn);
 
                 diesel::delete(paste::paste!($table_type::table))
                     .filter(token.eq(token))
@@ -609,6 +686,9 @@ macro_rules! adapt_diesel_verification_token {
                     use $table_type::dsl::*;
                 }
 
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;").execute(conn);
+
                 let now = chrono::Utc::now().naive_utc();
 
                 let to_insert = (
@@ -638,6 +718,10 @@ macro_rules! adapt_diesel_verification_token {
                 paste::paste! {
                     use $table_type::dsl::*;
                 }
+
+                // Turn on foreign key constraints, swallowing the error if it fails
+                let _ = diesel::sql_query("PRAGMA foreign_keys = ON;").execute(conn);
+
                 let now = chrono::Utc::now().naive_utc();
                 let to_delete = (email.eq(email), token.eq(token));
                 diesel::delete(paste::paste!($table_type::table))

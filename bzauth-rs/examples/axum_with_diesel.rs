@@ -257,8 +257,8 @@ async fn main() {
             .into(),
         ),
         providers: vec![
-            DiscordProvider::new().into(), // Discord provider
-            GoogleProvider::new().into(),  // Google provider
+            Box::new(DiscordProvider::new()), // Discord provider
+            Box::new(GoogleProvider::new()),  // Google provider
         ],
         callbacks: None,
         session: AuthSessionOptions {

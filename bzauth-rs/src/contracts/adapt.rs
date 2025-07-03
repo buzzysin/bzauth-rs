@@ -1,58 +1,29 @@
-use std::ops::Deref;
-
 use super::{account::Account, session::Session, user::User};
+use crate::tools::awaitable::Awaitable;
 
-pub struct AdaptUser {
-    pub user: User,
-}
-impl From<User> for AdaptUser {
-    fn from(user: User) -> Self {
-        AdaptUser { user }
-    }
-}
-impl From<AdaptUser> for User {
-    fn from(adapt_user: AdaptUser) -> Self {
-        adapt_user.user
-    }
-}
-impl Deref for AdaptUser {
-    type Target = User;
-
-    fn deref(&self) -> &Self::Target {
-        &self.user
-    }
-}
+pub type AdaptUser = User;
 
 pub struct ProviderAccountId {
     pub provider_id: String,
     pub provider_account_id: String,
 }
 
-pub struct AdaptAccount {
-    pub account: Account,
-}
-impl From<Account> for AdaptAccount {
-    fn from(account: Account) -> Self {
-        AdaptAccount { account }
-    }
-}
-impl From<AdaptAccount> for Account {
-    fn from(adapt_account: AdaptAccount) -> Self {
-        adapt_account.account
-    }
-}
+pub type AdaptAccount = Account;
 
+#[derive(Debug, Clone)]
 pub struct CreateSessionOptions {
     pub token: String,
     pub user_id: String,
     pub expires_in: u64,
 }
 
+#[derive(Debug, Clone)]
 pub struct SessionUser {
     pub session: AdaptSession,
     pub user: AdaptUser,
 }
 
+#[derive(Debug, Clone)]
 pub struct AdaptSession {
     pub token: String,
     pub user_id: String,
@@ -94,37 +65,104 @@ pub struct UseVerificationTokenOptions {
     pub token: String,
 }
 
-#[async_trait::async_trait]
 pub trait Adapt
 where
     Self: Send + Sync,
 {
-    async fn create_user(&self, user: AdaptUser) -> AdaptUser;
-    async fn get_user(&self, id: String) -> Option<AdaptUser>;
-    async fn get_user_by_email(&self, email: String) -> Option<AdaptUser>;
-    async fn get_user_by_account(&self, provider: ProviderAccountId) -> Option<AdaptUser>;
+    fn create_user(&self, user: AdaptUser) -> Awaitable<AdaptUser>;
+    fn get_user(&self, id: String) -> Awaitable<Option<AdaptUser>>;
+    fn get_user_by_email(&self, email: String) -> Awaitable<Option<AdaptUser>>;
+    fn get_user_by_account(&self, provider: ProviderAccountId) -> Awaitable<Option<AdaptUser>>;
     /// Id is required
-    async fn update_user(&self, user: AdaptUser) -> AdaptUser;
-    async fn delete_user(&self, id: String);
+    fn update_user(&self, user: AdaptUser) -> Awaitable<AdaptUser>;
+    fn delete_user(&self, id: String) -> Awaitable<()>;
 
-    async fn get_account(&self, provider: ProviderAccountId) -> Option<AdaptAccount>;
-    async fn link_account(&self, account: AdaptAccount) -> Option<AdaptAccount>;
-    async fn unlink_account(&self, provider: ProviderAccountId);
+    fn get_account(&self, provider: ProviderAccountId) -> Awaitable<Option<AdaptAccount>>;
+    fn link_account(&self, account: AdaptAccount) -> Awaitable<Option<AdaptAccount>>;
+    fn unlink_account(&self, provider: ProviderAccountId) -> Awaitable<()>;
 
-    async fn create_session(&self, options: CreateSessionOptions) -> Option<AdaptSession>;
-    async fn get_session_and_user(&self, token: String) -> Option<SessionUser>;
+    fn create_session(&self, options: CreateSessionOptions) -> Awaitable<Option<AdaptSession>>;
+    fn get_session_and_user(&self, token: String) -> Awaitable<Option<SessionUser>>;
     /// session_token required
-    async fn update_session(&self, session: AdaptSession) -> AdaptSession;
-    async fn delete_session(&self, token: String);
+    fn update_session(&self, session: AdaptSession) -> Awaitable<AdaptSession>;
+    fn delete_session(&self, token: String) -> Awaitable<()>;
 
-    async fn create_verification_token(
+    fn create_verification_token(
         &self,
         token: AdaptVerificationToken,
-    ) -> AdaptVerificationToken;
-    async fn use_verification_token(
+    ) -> Awaitable<AdaptVerificationToken>;
+    fn use_verification_token(
         &self,
         options: UseVerificationTokenOptions,
-    ) -> Option<AdaptVerificationToken>;
+    ) -> Awaitable<Option<AdaptVerificationToken>>;
 
     // TODO: Omitting WebAuthn methods for now
+}
+
+impl Adapt for Box<dyn Adapt> {
+    fn create_user(&self, user: AdaptUser) -> Awaitable<AdaptUser> {
+        (**self).create_user(user)
+    }
+
+    fn get_user(&self, id: String) -> Awaitable<Option<AdaptUser>> {
+        (**self).get_user(id)
+    }
+
+    fn get_user_by_email(&self, email: String) -> Awaitable<Option<AdaptUser>> {
+        (**self).get_user_by_email(email)
+    }
+
+    fn get_user_by_account(&self, provider: ProviderAccountId) -> Awaitable<Option<AdaptUser>> {
+        (**self).get_user_by_account(provider)
+    }
+
+    fn update_user(&self, user: AdaptUser) -> Awaitable<AdaptUser> {
+        (**self).update_user(user)
+    }
+
+    fn delete_user(&self, id: String) -> Awaitable<()> {
+        (**self).delete_user(id)
+    }
+
+    fn get_account(&self, provider: ProviderAccountId) -> Awaitable<Option<AdaptAccount>> {
+        (**self).get_account(provider)
+    }
+
+    fn link_account(&self, account: AdaptAccount) -> Awaitable<Option<AdaptAccount>> {
+        (**self).link_account(account)
+    }
+
+    fn unlink_account(&self, provider: ProviderAccountId) -> Awaitable<()> {
+        (**self).unlink_account(provider)
+    }
+
+    fn create_session(&self, options: CreateSessionOptions) -> Awaitable<Option<AdaptSession>> {
+        (**self).create_session(options)
+    }
+
+    fn get_session_and_user(&self, token: String) -> Awaitable<Option<SessionUser>> {
+        (**self).get_session_and_user(token)
+    }
+
+    fn update_session(&self, session: AdaptSession) -> Awaitable<AdaptSession> {
+        (**self).update_session(session)
+    }
+
+    fn delete_session(&self, token: String) -> Awaitable<()> {
+        (**self).delete_session(token)
+    }
+
+    fn create_verification_token(
+        &self,
+        token: AdaptVerificationToken,
+    ) -> Awaitable<AdaptVerificationToken> {
+        (**self).create_verification_token(token)
+    }
+
+    fn use_verification_token(
+        &self,
+        options: UseVerificationTokenOptions,
+    ) -> Awaitable<Option<AdaptVerificationToken>> {
+        (**self).use_verification_token(options)
+    }
 }

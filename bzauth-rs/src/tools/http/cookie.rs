@@ -212,20 +212,42 @@ impl FromStr for Cookie {
 
         for part in s.split(';') {
             let mut kv = part.split('=');
-            let key = kv.next().unwrap_or("").trim();
+            let full_key = kv.next().unwrap_or("").trim().to_string();
             let value = kv.next().unwrap_or("").trim();
 
-            match key {
-                "Path" => cookie = cookie.with_path(value.to_string()),
-                "Domain" => cookie = cookie.with_domain(value.to_string()),
-                "Secure" => cookie = cookie.with_secure(value.parse().unwrap_or(false)),
-                "HttpOnly" => cookie = cookie.with_http_only(value.parse().unwrap_or(false)),
-                "SameSite" => {
+            // Secure/Host cookies have a prefix: __Secure-Name=Value or __Host-Name=Value
+            let (key, secure, _host) = if full_key.to_lowercase().starts_with("__secure-") {
+                (
+                    full_key.trim_start_matches("__secure-").to_string(),
+                    true,
+                    false,
+                )
+            } else if full_key.starts_with("__host-") {
+                (
+                    full_key.trim_start_matches("__host-").to_string(),
+                    false,
+                    true,
+                )
+            } else {
+                (full_key.to_string(), false, false)
+            };
+
+            match key.to_lowercase().as_str() {
+                "path" => cookie = cookie.with_path(value.to_string()),
+                "domain" => cookie = cookie.with_domain(value.to_string()),
+                "httponly" => cookie = cookie.with_http_only(value.parse().unwrap_or(false)),
+                "samesite" => {
                     cookie = cookie.with_same_site(value.parse().unwrap_or(SameSite::Strict))
                 }
-                "Expires" => cookie = cookie.with_expires(value.parse().unwrap_or(0)),
-                "Max-Age" => cookie = cookie.with_max_age(value.parse::<i32>().unwrap_or(0)),
-                _ => cookie = cookie.with_value(value.to_string()),
+                "expires" => cookie = cookie.with_expires(value.parse().unwrap_or(0)),
+                "max-age" => cookie = cookie.with_max_age(value.parse::<i32>().unwrap_or(0)),
+                _ => {
+                    cookie = cookie.with_value(value.to_string());
+                    if (secure) && !cookie.name.is_empty() {
+                        // If the cookie is secure or a host cookie, we set the secure flag
+                        cookie = cookie.with_secure(secure);
+                    }
+                }
             }
         }
         Ok(cookie)
@@ -305,63 +327,44 @@ impl FromStr for Cookies {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut cookies = Cookies::new();
 
-        tracing::debug!("[cookie] Parsing cookies from string: {}", s);
-
-        let mut this_cookie = Cookie::new("".to_string());
-        // Split the string by semicolon
-        // This will produce key=value , with some cookie attributes
+        let mut currently_processing_cookie: Option<String> = None;
         for part in s.split(';') {
-            let mut kv = part.split('=');
-            let key = kv.next().unwrap_or("").trim();
-            let value = kv.next().unwrap_or("").trim();
+            let part = part.trim();
+            let kv: Vec<&str> = part.split('=').collect();
+            let k = kv.first().map(|s| s.trim()).unwrap_or("");
+            let v = kv.get(1).map(|s| s.trim()).unwrap_or("");
 
-            // Skip empty keys
-            if key.is_empty() {
-                tracing::warn!("[cookie] Skipping empty key in cookie part: {}", part);
+            // Skip empty parts
+            if k.is_empty() {
                 continue;
             }
 
-            // Skip empty values
-            if value.is_empty() {
-                tracing::warn!("[cookie] Skipping empty value for key: {}", key);
-                continue;
-            }
-
-            // Check if the key is a cookie attribute
-            match key {
-                "Path" => this_cookie.path = Some(value.to_string()),
-                "Domain" => this_cookie.domain = Some(value.to_string()),
-                "Secure" => this_cookie.secure = true,
-                "HttpOnly" => this_cookie.http_only = true,
-                "SameSite" => this_cookie.same_site = value.parse().unwrap_or(SameSite::Strict),
-                "Expires" => this_cookie.expires = Some(value.parse().unwrap_or(0)),
-                "Max-Age" => this_cookie.max_age = Some(value.parse::<i32>().unwrap_or(0)),
-                _ => {
-                    tracing::debug!("[cookie] Encountered new cookie: {}", key);
-                    // If we have a cookie left, add it to the cookies
-                    if !this_cookie.name.is_empty() {
-                        if this_cookie.value.is_none() {
-                            tracing::warn!("Cookie {} has no value, skipping", this_cookie.name);
+            match k.to_string().to_lowercase().as_str() {
+                "path" | "domain" | "secure" | "httponly" | "samesite" | "expires" | "max-age" => {
+                    // if processing a cookie string, append to the current cookie
+                    if let Some(partial_cookie) = &mut currently_processing_cookie {
+                        if v.is_empty() {
+                            // Probably a Secure or HttpOnly attribute without a value
+                            partial_cookie.push_str(&format!("; {}", k));
                         } else {
-                            tracing::debug!("Adding cookie: {}", this_cookie.name.clone());
-                            cookies
-                                .set(this_cookie.name.clone(), this_cookie.value.clone().unwrap());
+                            // Probably a key-value pair
+                            partial_cookie.push_str(&format!("; {}={}", k, v));
                         }
+                    } else {
+                        // Start a new cookie
+                        currently_processing_cookie = Some(k.to_string());
                     }
                 }
-            }
-        }
+                _ => {
+                    // If we have a currently processing cookie, finalize it
+                    if let Some(partial_cookie) = currently_processing_cookie.take() {
+                        let cookie = Cookie::from_str(&partial_cookie)?;
+                        cookies.cookies.insert(cookie.name.clone(), cookie);
+                    }
 
-        // If we have a cookie left, add it to the cookies
-        if !this_cookie.name.is_empty() {
-            if this_cookie.value.is_none() {
-                tracing::warn!(
-                    "[cookie] Cookie {} has no value, skipping",
-                    this_cookie.name
-                );
-            } else {
-                tracing::debug!("[cookie] Adding cookie: {}", this_cookie.name.clone());
-                cookies.set(this_cookie.name, this_cookie.value.unwrap());
+                    // Now process the key-value pair as a new cookie
+                    currently_processing_cookie = Some(part.to_string());
+                }
             }
         }
 
