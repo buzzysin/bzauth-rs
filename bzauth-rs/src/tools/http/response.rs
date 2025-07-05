@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use http::{HeaderMap, StatusCode, header::IntoHeaderName};
+use http::header::IntoHeaderName;
+use http::{HeaderMap, StatusCode};
 use serde::Serialize;
 
 use super::request::CoreRequest;

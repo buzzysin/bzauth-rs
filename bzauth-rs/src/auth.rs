@@ -1,9 +1,11 @@
 use std::sync::Arc;
 
-use crate::{
-    contracts::{account::Account, adapt::Adapt, profile::Profile, provide::Provide, user::User},
-    tools::awaitable::Awaitable,
-};
+use crate::contracts::account::Account;
+use crate::contracts::adapt::Adapt;
+use crate::contracts::profile::Profile;
+use crate::contracts::provide::Provide;
+use crate::contracts::user::User;
+use crate::tools::awaitable::Awaitable;
 
 #[derive(Debug, Clone)]
 pub struct SignInOptions {

@@ -1,15 +1,12 @@
 use oauth2::CsrfToken;
 use serde::{Deserialize, Serialize};
 
-use crate::tools::{
-    cookie::Cookies,
-    generators,
-    request_extractors::{COOKIE_CSRF_TOKEN, COOKIE_STATE},
-};
-use crate::{
-    contracts::provide::ProviderType,
-    tools::{CoreError, request::CoreRequest, response::CoreResponse},
-};
+use crate::contracts::provide::ProviderType;
+use crate::tools::cookie::Cookies;
+use crate::tools::request::CoreRequest;
+use crate::tools::request_extractors::{COOKIE_CSRF_TOKEN, COOKIE_STATE};
+use crate::tools::response::CoreResponse;
+use crate::tools::{CoreError, generators};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthoriseRequest {}

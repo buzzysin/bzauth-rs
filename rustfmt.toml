@@ -1,2 +1,6 @@
+# Imports
 group_imports = "StdExternalCrate"
+imports_granularity = "Module"
+
+# AST
 use_try_shorthand = true

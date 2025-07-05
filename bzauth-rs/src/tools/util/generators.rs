@@ -1,8 +1,7 @@
-use oauth2::{
-    AuthUrl, ClientId, ClientSecret, EndpointNotSet, EndpointSet, RedirectUrl, TokenUrl,
-    basic::BasicClient,
-};
-use rand::{Rng, distr::Alphanumeric};
+use oauth2::basic::BasicClient;
+use oauth2::{AuthUrl, ClientId, ClientSecret, EndpointNotSet, EndpointSet, RedirectUrl, TokenUrl};
+use rand::Rng;
+use rand::distr::Alphanumeric;
 
 use super::request_extractors::UtilError;
 use crate::contracts::provide::ProvideOAuth2;

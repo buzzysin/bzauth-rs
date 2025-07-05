@@ -1,14 +1,10 @@
-use crate::{
-    contracts::{
-        account::Account,
-        adapt::{Adapt, CreateSessionOptions},
-        provide::Provide,
-        user::User,
-    },
-    tools::{
-        CallbackRequest, CallbackResponse, CoreError, request::CoreRequest, response::CoreResponse,
-    },
-};
+use crate::contracts::account::Account;
+use crate::contracts::adapt::{Adapt, CreateSessionOptions};
+use crate::contracts::provide::Provide;
+use crate::contracts::user::User;
+use crate::tools::request::CoreRequest;
+use crate::tools::response::CoreResponse;
+use crate::tools::{CallbackRequest, CallbackResponse, CoreError};
 
 pub async fn register(
     _request: CoreRequest<CallbackRequest>,

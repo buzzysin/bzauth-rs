@@ -204,13 +204,11 @@ pub mod models {
     }
 }
 
-use bzauth_rs::adaptors::diesel::DieselAdaptor;
+use bzauth_rs::adaptors::diesel::{DieselAdapterOptions, DieselAdaptor};
 use bzauth_rs::auth::AuthOptions;
-use bzauth_rs::{adaptors::diesel::DieselAdapterOptions, providers::discord::DiscordProvider};
-use diesel::{
-    SqliteConnection,
-    r2d2::{ConnectionManager, Pool},
-};
+use bzauth_rs::providers::discord::DiscordProvider;
+use diesel::SqliteConnection;
+use diesel::r2d2::{ConnectionManager, Pool};
 
 pub struct MyDieselAdaptor;
 bzauth_rs::adapt_diesel! {
@@ -229,11 +227,9 @@ bzauth_rs::adapt_diesel! {
 #[tokio::main]
 async fn main() {
     use axum::{Extension, Router};
-    use bzauth_rs::{
-        auth::AuthSessionOptions,
-        providers::GoogleProvider,
-        runtimes::axum::runtime::{AxumRuntime, AxumRuntimeOptions},
-    };
+    use bzauth_rs::auth::AuthSessionOptions;
+    use bzauth_rs::providers::GoogleProvider;
+    use bzauth_rs::runtimes::axum::runtime::{AxumRuntime, AxumRuntimeOptions};
     use tokio::net::TcpListener;
 
     unsafe {

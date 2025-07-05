@@ -2,16 +2,14 @@ use http::StatusCode;
 use oauth2::{AuthorizationCode, StandardTokenResponse, TokenResponse};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    auth::{SignInOptions, SignInResult},
-    contracts::{
-        adapt::{AdaptAccount, AdaptUser, ProviderAccountId},
-        profile::Profile,
-        provide::ProviderType,
-        token::Token,
-    },
-    tools::{CoreError, actions, generators, request::CoreRequest, response::CoreResponse},
-};
+use crate::auth::{SignInOptions, SignInResult};
+use crate::contracts::adapt::{AdaptAccount, AdaptUser, ProviderAccountId};
+use crate::contracts::profile::Profile;
+use crate::contracts::provide::ProviderType;
+use crate::contracts::token::Token;
+use crate::tools::request::CoreRequest;
+use crate::tools::response::CoreResponse;
+use crate::tools::{CoreError, actions, generators};
 
 impl<EF, TT> From<StandardTokenResponse<EF, TT>> for Token
 where

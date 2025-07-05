@@ -1,4 +1,5 @@
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub enum CookieAttribute {

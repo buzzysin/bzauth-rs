@@ -18,3 +18,4 @@
 
 # Test results
 /target/debug/
+*.json

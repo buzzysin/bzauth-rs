@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
 use super::error::ProviderError;
-use crate::contracts::{
-    endpoint::Endpoint,
-    profile::Profile,
-    provide::{ProvideOAuth2, ProviderType, ProvidesProfile},
-    user::User,
-};
+use crate::contracts::endpoint::Endpoint;
+use crate::contracts::profile::Profile;
+use crate::contracts::provide::{ProvideOAuth2, ProviderType, ProvidesProfile};
+use crate::contracts::user::User;
 
 pub struct DiscordProfile {
     pub id: String,
