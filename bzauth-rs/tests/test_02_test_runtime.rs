@@ -1,23 +1,29 @@
 mod mock;
 
-use std::sync::Arc;
-
 use bzauth_rs::auth::AuthOptions;
 use bzauth_rs::runtimes::axum::AxumRuntimeOptions;
 use mock::{JsonStore, JsonStoreTypes, MockAdaptor, MockProvider};
-use tokio::sync::Notify;
+use tempfile::NamedTempFile;
 
 #[tokio::test]
+#[cfg_attr(
+    not(feature = "test_sequential"),
+    ignore = "this test cannot run in parallel"
+)]
 async fn test_runtime_server() {
-    let shutdown_receiver = Arc::new(Notify::new());
-    let json_store = JsonStore::new(&JsonStoreTypes::Memory);
+    let signals = mock::Signals::new();
+
+    let tmpfile = NamedTempFile::new().expect("Failed to create temp file");
+    let path = tmpfile.path();
+
+    let json_store = JsonStore::new(&JsonStoreTypes::File(path));
     let auth_options = AuthOptions::new()
         .add_provider(Box::new(MockProvider))
         .with_adaptor(Box::new(MockAdaptor::new(json_store)));
     let options = AxumRuntimeOptions::new(auth_options);
 
     // Start the mock auth server
-    let server_future = mock::runtime::axum::start(shutdown_receiver.clone(), options);
+    let server_future = mock::runtime::axum::start(signals.clone(), options);
 
     // Run the server in a separate task
     let server_handle = tokio::spawn(async move {
@@ -26,13 +32,11 @@ async fn test_runtime_server() {
         }
     });
 
-    // Allow some time for the server to start
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-
-    // Here you would typically run your tests against the mock server
+    // Wait for the server to be ready
+    signals.wait_for_ready().await;
 
     // Signal the server to shut down
-    shutdown_receiver.notify_waiters();
+    signals.notify_shutdown();
 
     // Wait for the server to finish shutting down
     let _ = server_handle.await;

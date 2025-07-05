@@ -7,6 +7,7 @@ use crate::tools::response::CoreResponse;
 use crate::tools::try_async::TryFromAsync;
 use crate::tools::{AuthoriseResponse, CoreError};
 
+#[axum::debug_handler]
 pub async fn authorise(
     ExtractAuth(auth): ExtractAuth,
     request: Request,

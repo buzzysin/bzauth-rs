@@ -72,8 +72,7 @@ impl From<Profile> for MockProfile {
 }
 
 impl ProvidesProfile for MockProvider {
-    fn get_profile(&self, profile: Profile) -> Box<User> {
-        let mock_profile = MockProfile::from(profile);
+    fn get_profile(&self, _profile: Profile) -> Box<User> {
         let user = User {
             id: Some(MOCK_PROVIDER_USER_ID.to_string()),
             username: Some(MOCK_PROVIDER_USER_NAME.to_string()),

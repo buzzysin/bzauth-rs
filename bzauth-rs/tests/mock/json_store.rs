@@ -66,7 +66,7 @@ impl JsonStoreInner {
             10,
         )?;
 
-        let data = Self::read_json_retries(path, 10)?;
+        let data = Self::read_json_retries(path)?;
         // Ensure the file is created with an empty object if it was empty
         if data.is_null() || !data.is_object() {
             return Err("File is empty or not a valid JSON object".to_string());
@@ -82,7 +82,7 @@ impl JsonStoreInner {
             10,
         )?;
 
-        let data = Self::read_json_retries(path, 10)?;
+        let data = Self::read_json_retries(path)?;
 
         Ok(Self { data })
     }
@@ -96,7 +96,7 @@ impl JsonStoreInner {
         loop {
             match options.open(&path) {
                 Ok(file) => return Ok(file),
-                Err(e) if attempts < retries => {
+                Err(_) if attempts < retries => {
                     attempts += 1;
                     std::thread::sleep(std::time::Duration::from_millis(100));
                 }
@@ -105,7 +105,7 @@ impl JsonStoreInner {
         }
     }
 
-    fn read_json_retries<P: AsRef<Path>>(path: P, retries: usize) -> Result<serde_json::Value> {
+    fn read_json_retries<P: AsRef<Path>>(path: P) -> Result<serde_json::Value> {
         // Read everything. If it's empty, inject an empty object
         let raw =
             std::fs::read_to_string(&path).map_err(|e| format!("Failed to read file: {}", e))?;

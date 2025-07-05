@@ -64,7 +64,7 @@ async fn callback_oauth2(
     let oauth2_provider = provider
         .as_ref()
         .as_oauth2()
-        .ok_or_else(|| CoreError::new().with_message("Provider is not OAuth2".to_string()))?;
+        .ok_or_else(|| CoreError::new().with_message("Provider is not OAuth2"))?;
 
     // Extract the authorization code from the request
     let code = AuthorizationCode::new(request.extract_code()?);
@@ -146,7 +146,7 @@ async fn callback_oauth2(
         &adapt_user.clone().or(Some(*profile_user.clone())),
         &adapt_account,
         &profile_response,
-        auth,
+        auth.clone(),
     )
     .await
     {
@@ -162,6 +162,7 @@ async fn callback_oauth2(
             Some(adapt_account),
             &provider,
             adaptor,
+            auth,
         )
         .await
     } else {
@@ -172,6 +173,7 @@ async fn callback_oauth2(
             Some(adapt_account),
             &provider,
             adaptor,
+            auth,
         )
         .await
     }

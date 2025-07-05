@@ -2,7 +2,6 @@ mod mock;
 
 use crate::mock::{JsonStore, JsonStoreType};
 
-const TEST_FILE: &str = "test_json.json";
 const SEED_DATA: &str = r#"
 {
   "users": [
@@ -38,6 +37,7 @@ mod memory {
     };
 
     #[test]
+    #[cfg(not(feature = "test_sequential"))]
     fn test_select() {
         let store = create_store(&JsonStoreTypes::Memory);
 
@@ -64,6 +64,7 @@ mod memory {
     }
 
     #[test]
+    #[cfg(not(feature = "test_sequential"))]
     fn test_insert() {
         let store = super::create_store(&JsonStoreTypes::Memory);
 
@@ -91,6 +92,7 @@ mod memory {
     }
 
     #[test]
+    #[cfg(not(feature = "test_sequential"))]
     fn test_update() {
         let store = super::create_store(&JsonStoreTypes::Memory);
 
@@ -106,6 +108,7 @@ mod memory {
     }
 
     #[test]
+    #[cfg(not(feature = "test_sequential"))]
     fn test_delete() {
         let store = super::create_store(&JsonStoreTypes::Memory);
 
@@ -129,16 +132,21 @@ mod memory {
 }
 
 mod filesystem {
+    use tempfile::NamedTempFile;
+
     use super::create_store;
-    use crate::TEST_FILE;
     use crate::mock::{
         JsonStoreTypes, JsonTableDeleteQuery, JsonTableInsertQuery, JsonTableSelectQuery,
         JsonTableUpdateQuery,
     };
 
     #[test]
+    #[cfg(not(feature = "test_sequential"))]
     fn test_select() {
-        let store = create_store(&JsonStoreTypes::File(TEST_FILE));
+        let tmpfile = NamedTempFile::new().expect("Failed to create temp file");
+        let path = tmpfile.path();
+
+        let store = create_store(&JsonStoreTypes::File(path));
 
         let query = JsonTableSelectQuery::new("users");
         let users_result = query.execute(&store);
@@ -149,11 +157,30 @@ mod filesystem {
         assert_eq!(users_result[1]["id"], 2);
         assert_eq!(users_result[1]["name"], "Bob");
         assert_eq!(users_result[1]["email"], "bob@email.com");
+
+        // Verify the accounts data
+        let accounts_query = JsonTableSelectQuery::new("accounts");
+        let accounts_result = accounts_query.execute(&store);
+        assert_eq!(accounts_result.len(), 2);
+        assert_eq!(accounts_result[0]["id"], 1);
+        assert_eq!(accounts_result[0]["user_id"], 1);
+        assert_eq!(accounts_result[0]["balance"], 100.0);
+        assert_eq!(accounts_result[1]["id"], 2);
+        assert_eq!(accounts_result[1]["user_id"], 2);
+        assert_eq!(accounts_result[1]["balance"], 200.0);
+
+        // Pretty print the contents of the store
+        println!("Store contents after select: {:?}", users_result);
+        println!("Accounts contents after select: {:?}", accounts_result);
     }
 
     #[test]
+    #[cfg(not(feature = "test_sequential"))]
     fn test_insert() {
-        let store = create_store(&JsonStoreTypes::File(TEST_FILE));
+        let tmpfile = NamedTempFile::new().expect("Failed to create temp file");
+        let path = tmpfile.path();
+
+        let store = create_store(&JsonStoreTypes::File(path));
 
         let value = serde_json::json!({
             "id": 3,
@@ -173,11 +200,18 @@ mod filesystem {
         assert!(select_result.iter().any(|user| {
             user["id"] == 3 && user["name"] == "Charlie" && user["email"] == "charlie@email.com"
         }));
+
+        // Pretty print the contents of the store
+        println!("Store contents after insert: {:?}", select_result);
     }
 
     #[test]
+    #[cfg(not(feature = "test_sequential"))]
     fn test_update() {
-        let store = create_store(&JsonStoreTypes::File(TEST_FILE));
+        let tmpfile = NamedTempFile::new().expect("Failed to create temp file");
+        let path = tmpfile.path();
+
+        let store = create_store(&JsonStoreTypes::File(path));
 
         let values = serde_json::json!({
             "email": "charlie@newdomain.com"
@@ -198,11 +232,18 @@ mod filesystem {
         assert!(select_result.iter().any(|user| {
             user["id"] == 2 && user["name"] == "Bob" && user["email"] == "bob@email.com"
         }));
+
+        // Pretty print the contents of the store
+        println!("Store contents after update: {:?}", select_result);
     }
 
     #[test]
+    #[cfg(not(feature = "test_sequential"))]
     fn test_delete() {
-        let store = create_store(&JsonStoreTypes::File(TEST_FILE));
+        let tmpfile = NamedTempFile::new().expect("Failed to create temp file");
+        let path = tmpfile.path();
+
+        let store = create_store(&JsonStoreTypes::File(path));
 
         let query = JsonTableDeleteQuery::new("users").where_clause("id", 2);
         let result = query.execute(&store);
@@ -218,5 +259,8 @@ mod filesystem {
         assert!(select_result.iter().any(|user| {
             user["id"] == 1 && user["name"] == "Alice" && user["email"] == "alice@email.com"
         }));
+
+        // Pretty print the contents of the store
+        println!("Store contents after deletion: {:?}", select_result);
     }
 }

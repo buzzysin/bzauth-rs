@@ -31,10 +31,10 @@ impl CoreError {
             message: self.message,
         }
     }
-    pub fn with_message(self, message: String) -> Self {
+    pub fn with_message<M: AsRef<str>>(self, message: M) -> Self {
         CoreError {
             status: self.status,
-            message,
+            message: message.as_ref().to_string(),
         }
     }
 }

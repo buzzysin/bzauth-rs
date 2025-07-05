@@ -5,18 +5,17 @@ use crate::mock::provider::{MOCK_PROVIDER_HOST, MOCK_PROVIDER_PORT};
 use crate::mock::{MOCK_PROVIDER_CLIENT_ID, MOCK_PROVIDER_CLIENT_SECRET};
 
 pub mod axum_ {
-    use std::sync::Arc;
 
     use axum::Json;
     use axum::response::Html;
     use axum::routing::{Router, get, post};
-    use tokio::sync::Notify;
 
     use super::*;
-    use crate::mock::MOCK_PROVIDER_NAME;
     use crate::mock::runtime::MOCK_AUTH_URL;
+    use crate::mock::{MOCK_PROVIDER_NAME, Signals};
 
     async fn authorise() -> Html<String> {
+        println!("Mock Authorisation Endpoint Hit");
         format!(
             r#"
             <!DOCTYPE html>
@@ -48,6 +47,7 @@ pub mod axum_ {
     }
 
     async fn token() -> Json<serde_json::Value> {
+        println!("Mock Token Endpoint Hit");
         Json(serde_json::json!({
             "access_token": "mock_access_token",
             "token_type": "Bearer",
@@ -57,6 +57,7 @@ pub mod axum_ {
     }
 
     async fn userinfo() -> Json<serde_json::Value> {
+        println!("Mock Userinfo Endpoint Hit");
         Json(serde_json::json!({
             "sub": "1234567890",
             "name": "John Doe",
@@ -72,14 +73,19 @@ pub mod axum_ {
             .route(format!("/{}", MOCK_PROFILE).as_str(), get(userinfo))
     }
 
-    pub async fn start(shutdown_receiver: Arc<Notify>) -> Result<(), std::io::Error> {
+    pub async fn start(signals: Signals) -> Result<(), std::io::Error> {
         let app = router();
         let addr = (MOCK_PROVIDER_HOST, MOCK_PROVIDER_PORT);
         let listener = tokio::net::TcpListener::bind(addr).await?;
 
+        // Notify that the server is ready
+        signals.notify_ready();
+
         axum::serve(listener, app.into_make_service())
             .with_graceful_shutdown(async move {
-                shutdown_receiver.notified().await;
+                // Wait for the shutdown signal
+                signals.wait_for_shutdown().await;
+                println!("Shutting down mock auth server...");
             })
             .await
     }

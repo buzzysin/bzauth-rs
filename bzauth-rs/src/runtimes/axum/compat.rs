@@ -33,7 +33,7 @@ impl<T: RequestPayload> TryFromAsync<Request> for CoreRequest<T> {
         let body = request
             .extract::<String, _>()
             .await
-            .map_err(|_| CoreError::new().with_message("Failed to extract body".to_string()));
+            .map_err(|_| CoreError::new().with_message("Failed to extract body"));
 
         // Create the CoreRequest
         Ok(CoreRequest::new_unchecked(

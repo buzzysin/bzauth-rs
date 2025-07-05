@@ -1,20 +1,17 @@
 use super::*;
 
-pub mod axum {
-    use std::sync::Arc;
-
+pub mod axum_ {
     use bzauth_rs::runtimes::axum::AxumRuntimeOptions;
-    use tokio::sync::Notify;
 
     use super::*;
 
-    pub async fn run<F, Fut>(shutdown_receiver: Arc<Notify>, options: AxumRuntimeOptions, f: F)
+    pub async fn run<F, Fut>(signals: Signals, options: AxumRuntimeOptions, f: F)
     where
         F: FnOnce() -> Fut,
         Fut: Future<Output = ()>,
     {
-        let server_future = provider_server::axum_::start(shutdown_receiver.clone());
-        let runtime_future = runtime::axum::start(shutdown_receiver.clone(), options);
+        let server_future = provider_server::axum_::start(signals.clone());
+        let runtime_future = runtime::axum::start(signals.clone(), options);
 
         // Run the server in a separate task
         let server_handle = tokio::spawn(async move {
@@ -29,15 +26,26 @@ pub mod axum {
         });
 
         // Allow some time for the servers to start
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        println!("Waiting for servers to start...");
+        signals.wait_for_ready().await; // one server is ready
+        println!("At least one server is ready");
+        signals.wait_for_ready().await; // both servers are ready
+        println!("Both servers are ready");
 
+        // Run the test function
+        println!("Running test function");
         f().await;
+        println!("Test function completed");
 
-        // Signal the server to shut down
-        shutdown_receiver.notify_waiters();
+        // Signal the servers to shut down
+        println!("Signaling servers to shut down");
+        signals.notify_shutdown();
+        println!("Servers signaled to shut down");
 
         // Wait for the server to finish shutting down
+        println!("Waiting for server handles to complete");
         let _ = server_handle.await;
         let _ = runtime_handle.await;
+        println!("Server handles completed");
     }
 }
