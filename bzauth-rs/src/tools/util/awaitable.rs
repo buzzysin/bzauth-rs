@@ -1,6 +1,6 @@
 use std::pin::Pin;
 
-pub type Awaitable<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
+pub type Awaitable<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 
 #[macro_export]
 macro_rules! awaitable {

@@ -1,15 +1,12 @@
 use oauth2::CsrfToken;
 use serde::{Deserialize, Serialize};
 
-use crate::tools::{
-    cookie::Cookies,
-    generators,
-    request_extractors::{COOKIE_CSRF_TOKEN, COOKIE_STATE},
-};
-use crate::{
-    contracts::provide::ProviderType,
-    tools::{CoreError, request::CoreRequest, response::CoreResponse},
-};
+use crate::contracts::provide::ProviderType;
+use crate::tools::cookie::Cookies;
+use crate::tools::request::CoreRequest;
+use crate::tools::request_extractors::{COOKIE_CSRF_TOKEN, COOKIE_STATE};
+use crate::tools::response::CoreResponse;
+use crate::tools::{CoreError, generators};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthoriseRequest {}
@@ -46,7 +43,7 @@ async fn authorise_oauth2(
     let oauth2_provider = provider
         .as_ref()
         .as_oauth2()
-        .ok_or_else(|| CoreError::new().with_message("Provider is not OAuth2".to_string()))?;
+        .ok_or_else(|| CoreError::new().with_message("Provider is not OAuth2"))?;
 
     let client = generators::generate_client_from_auth(oauth2_provider)?;
     // let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();

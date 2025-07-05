@@ -1,11 +1,12 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
-use http::Uri;
-use http::{HeaderMap, HeaderName};
+use http::{HeaderMap, HeaderName, Uri};
 use serde::de::DeserializeOwned;
 
 use super::cookie::Cookies;
-use crate::{auth::Auth, tools::response::RequestPayload};
+use crate::auth::Auth;
+use crate::tools::response::RequestPayload;
 
 #[derive(Clone)]
 pub struct CoreRequest<T = ()> {

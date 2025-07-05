@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use axum::{
-    Extension, RequestPartsExt, extract::FromRequestParts, http::request::Parts,
-    response::IntoResponse,
-};
+use axum::extract::FromRequestParts;
+use axum::http::request::Parts;
+use axum::response::IntoResponse;
+use axum::{Extension, RequestPartsExt};
 use serde::Serialize;
 
 use crate::auth::Auth;

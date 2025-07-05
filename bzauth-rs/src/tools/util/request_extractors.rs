@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use super::generators::{Oauth2Client, generate_client_from_auth};
-use crate::{
-    auth::Auth,
-    contracts::adapt::Adapt,
-    tools::{request::CoreRequest, response::RequestPayload},
-};
-use crate::{contracts::provide::Provide, tools::CoreError};
+use crate::auth::Auth;
+use crate::contracts::adapt::Adapt;
+use crate::contracts::provide::Provide;
+use crate::tools::CoreError;
+use crate::tools::request::CoreRequest;
+use crate::tools::response::RequestPayload;
 
 pub enum UtilError {
     MissingAuth(String),

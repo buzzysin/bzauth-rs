@@ -5,5 +5,3 @@ pub mod diesel;
 
 #[cfg(feature = "adapt_sqlx")]
 pub mod sqlx;
-
-pub mod mock;

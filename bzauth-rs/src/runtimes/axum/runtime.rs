@@ -1,15 +1,14 @@
 use std::sync::Arc;
 
-use axum::{
-    Json, Router,
-    handler::Handler,
-    routing::{MethodRouter, get, post},
-};
-use serde::{Serialize, ser::SerializeStruct};
+use axum::handler::Handler;
+use axum::routing::{MethodRouter, get, post};
+use axum::{Json, Router};
+use serde::Serialize;
+use serde::ser::SerializeStruct;
 
 use super::routes::{authorise, callback, csrf};
-use crate::auth::Auth;
-use crate::{auth::AuthOptions, contracts::provide::Provide};
+use crate::auth::{Auth, AuthOptions};
+use crate::contracts::provide::Provide;
 
 pub struct AxumRuntime {
     pub auth: Arc<Auth>,
@@ -18,6 +17,13 @@ pub struct AxumRuntime {
 
 pub struct AxumRuntimeOptions {
     pub auth_options: AuthOptions,
+}
+
+impl AxumRuntimeOptions {
+    /// Create a new Axum runtime options
+    pub fn new(auth_options: AuthOptions) -> Self {
+        AxumRuntimeOptions { auth_options }
+    }
 }
 
 impl AxumRuntime {
@@ -31,7 +37,7 @@ impl AxumRuntime {
         AxumRuntime { auth, routes }
     }
 
-    pub fn create_router(auth_options: &AuthOptions) -> Router {
+    fn create_router(auth_options: &AuthOptions) -> Router {
         let providers = auth_options.providers.clone();
         let providers_handler = move || async move { Json(providers) };
 

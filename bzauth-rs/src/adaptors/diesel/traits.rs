@@ -678,10 +678,7 @@ macro_rules! adapt_diesel_verification_token {
                 verification_token: Self::Model,
             ) -> Self::Model {
                 // Create a verification token using the connection
-                use diesel::ExpressionMethods;
-                use diesel::QueryDsl;
-                use diesel::RunQueryDsl;
-                use diesel::SelectableHelper;
+                use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
                 paste::paste! {
                     use $table_type::dsl::*;
                 }
@@ -711,10 +708,7 @@ macro_rules! adapt_diesel_verification_token {
             fn use_verification_token(&self, conn: &mut $connection, email: &str, token: &str) {
                 // Use a verification token using the connection
                 // (Using a verification token means deleting it)
-                use diesel::ExpressionMethods;
-                use diesel::QueryDsl;
-                use diesel::RunQueryDsl;
-                use diesel::SelectableHelper;
+                use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
                 paste::paste! {
                     use $table_type::dsl::*;
                 }

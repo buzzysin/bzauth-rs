@@ -1,10 +1,11 @@
 use std::any::Any;
 
 use dyn_clone::DynClone;
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-use super::{endpoint::Endpoint, profile::Profile, user::User};
+use super::endpoint::Endpoint;
+use super::profile::Profile;
+use super::user::User;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum ProviderType {

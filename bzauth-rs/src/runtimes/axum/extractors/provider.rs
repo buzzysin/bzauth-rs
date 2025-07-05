@@ -1,9 +1,7 @@
-use axum::{
-    RequestPartsExt,
-    extract::{FromRequestParts, Path},
-    http::request::Parts,
-    response::IntoResponse,
-};
+use axum::RequestPartsExt;
+use axum::extract::{FromRequestParts, Path};
+use axum::http::request::Parts;
+use axum::response::IntoResponse;
 use serde::Serialize;
 
 use super::auth::ExtractAuth;

@@ -1,14 +1,13 @@
-use crate::{
-    contracts::{
-        account::Account,
-        adapt::{Adapt, CreateSessionOptions},
-        provide::Provide,
-        user::User,
-    },
-    tools::{
-        CallbackRequest, CallbackResponse, CoreError, request::CoreRequest, response::CoreResponse,
-    },
-};
+use std::sync::Arc;
+
+use crate::auth::Auth;
+use crate::contracts::account::Account;
+use crate::contracts::adapt::{Adapt, CreateSessionOptions};
+use crate::contracts::provide::Provide;
+use crate::contracts::user::User;
+use crate::tools::request::CoreRequest;
+use crate::tools::response::CoreResponse;
+use crate::tools::{CallbackRequest, CallbackResponse, CoreError};
 
 pub async fn register(
     _request: CoreRequest<CallbackRequest>,
@@ -16,10 +15,10 @@ pub async fn register(
     _account: Option<Account>,
     _provider: &dyn Provide,
     _adaptor: &dyn Adapt,
-    // auth: Arc<Auth>,
+    _auth: Arc<Auth>,
 ) -> Result<CoreResponse<CallbackResponse>, CoreError> {
     if _user.is_none() {
-        return Err(CoreError::new().with_message("User is required for registration".to_string()));
+        return Err(CoreError::new().with_message("User is required for registration"));
     }
 
     let _user = _user.unwrap();
@@ -34,7 +33,7 @@ pub async fn register(
 
     // If the user already exists by email, return an error
     if user_by_email.is_some() {
-        return Err(CoreError::new().with_message("Email is already registered".to_string()));
+        return Err(CoreError::new().with_message("Email is already registered"));
     }
 
     // Create user, link account, generate session, and redirect
@@ -58,8 +57,31 @@ pub async fn register(
     let mut cookies = _request.cookies().clone();
     cookies.set("session_token", session_generated.to_string());
 
+    // TODO: Move this to an internal functionality of CoreResponse
+
+    // Infer the host from the request headers
+    let url = _request.uri().to_string();
+    let host = _request.headers().get("host").and_then(|h| h.to_str().ok());
+    if host.is_none() {
+        return Err(
+            CoreError::new().with_message("Failed to infer the host from the request headers")
+        );
+    }
+    let scheme = _request.uri().scheme_str().unwrap_or("http");
+    let base_url = format!("{}://{}", scheme, host.unwrap());
+
+    // Convert the host to a string
+    let redirect_callback = _auth
+        .options
+        .callbacks
+        .as_ref()
+        .map(|c| c.redirect.clone())
+        .unwrap_or_default();
+
+    let redirect_url = redirect_callback(url.clone(), base_url).await;
+
     // TODO: If a callback-url cookie is set, use that instead of redirecting to the home page
     Ok(CoreResponse::new()
-        .with_redirect("http://localhost:3000/".to_string())
+        .with_redirect(redirect_url)
         .with_cookies(cookies.clone()))
 }

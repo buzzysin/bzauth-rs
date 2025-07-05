@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use http::{HeaderMap, StatusCode, header::IntoHeaderName};
+use http::header::IntoHeaderName;
+use http::{HeaderMap, StatusCode};
 use serde::Serialize;
 
 use super::request::CoreRequest;
@@ -117,12 +118,7 @@ impl<T> CoreResponse<T> {
     // Append a redirect header to the response
     pub fn with_redirect(self, location: String) -> Self {
         let mut headers = self.headers.clone();
-        headers.insert(
-            http::header::LOCATION,
-            location
-                .parse()
-                .unwrap_or_else(|_| "http://localhost:3000".parse().unwrap()),
-        );
+        headers.insert(http::header::LOCATION, location.parse().unwrap());
 
         CoreResponse {
             status: StatusCode::FOUND,

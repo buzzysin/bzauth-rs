@@ -1,9 +1,15 @@
+use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::{
-    contracts::{account::Account, adapt::Adapt, profile::Profile, provide::Provide, user::User},
-    tools::awaitable::Awaitable,
-};
+use url::Url;
+
+use crate::awaitable;
+use crate::contracts::account::Account;
+use crate::contracts::adapt::Adapt;
+use crate::contracts::profile::Profile;
+use crate::contracts::provide::Provide;
+use crate::contracts::user::User;
+use crate::tools::awaitable::Awaitable;
 
 #[derive(Debug, Clone)]
 pub struct SignInOptions {
@@ -18,11 +24,54 @@ pub enum SignInResult {
     Redirect(String),
     Error(String),
 }
-pub type SignInCallback = Arc<fn(SignInOptions) -> Awaitable<SignInResult>>;
+
+pub type SignInCallback = Arc<dyn Fn(SignInOptions) -> Awaitable<SignInResult> + Send + Sync>;
+
+#[derive(Clone)]
+pub struct RedirectCallback(Arc<dyn Fn(String, String) -> Awaitable<String> + Send + Sync>);
+
+impl RedirectCallback {
+    pub fn new<F>(callback: F) -> Self
+    where
+        F: Fn(String, String) -> Awaitable<String> + Send + Sync + 'static,
+    {
+        Self(Arc::new(callback))
+    }
+}
+
+impl Deref for RedirectCallback {
+    type Target = Arc<dyn Fn(String, String) -> Awaitable<String> + Send + Sync>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Default for RedirectCallback {
+    /// The default redirect only allows same-origin redirects. The user can configure this to their liking.
+    fn default() -> Self {
+        Self(Arc::new(|url, base_url| {
+            // Extract the url data
+            let url_obj = Url::parse(&base_url).ok();
+            let origin = url_obj.as_ref().map(|u| u.origin().ascii_serialization());
+
+            // If the url is same-origin, return it
+            if let Some(origin) = origin {
+                if url.starts_with(&origin) {
+                    return awaitable!(url);
+                }
+            }
+
+            // Otherwise, go back to the origin
+            awaitable!(base_url)
+        }))
+    }
+}
 
 #[derive(Clone, Default)]
 pub struct AuthCallbackOptions {
     pub sign_in: Option<SignInCallback>,
+    pub redirect: RedirectCallback,
 }
 
 #[derive(Clone, Default)]

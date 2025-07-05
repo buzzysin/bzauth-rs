@@ -15,8 +15,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # First, checkout the repository
     - uses: actions/checkout@v4
+    
+    # Then, build the project
     - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      run: cargo build 
+    
+    # Then, run the tests that must be run sequentially
+    - name: Run tests (sequential)
+      run: cargo test --features test_sequential -- --test-threads=1
+
+    # Then, run the tests that don't interfere with one another in parallel
+    - name: Run tests (parallel)
+      run: cargo test # The default test command runs all tests in parallel
