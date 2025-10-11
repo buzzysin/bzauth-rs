@@ -8,8 +8,9 @@ mod provider;
 mod signals;
 
 pub mod environment;
-pub mod provider_server;
-pub mod runtime;
+pub mod requests;
+pub mod server_provider;
+pub mod server_runtime;
 
 pub use adaptor::*;
 pub use json_store::*;

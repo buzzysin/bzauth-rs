@@ -19,20 +19,21 @@ impl std::error::Error for CoreError {}
 impl CoreError {
     /// Creates a new `CoreError` with a default status of 500 and a generic message.
     pub fn new() -> Self {
-        CoreError {
+        Self {
             status: http::StatusCode::INTERNAL_SERVER_ERROR.into(),
             message: "Unknown error".to_string(),
         }
     }
 
     pub fn with_status(self, status: u16) -> Self {
-        CoreError {
+        Self {
             status,
             message: self.message,
         }
     }
+
     pub fn with_message<M: AsRef<str>>(self, message: M) -> Self {
-        CoreError {
+        Self {
             status: self.status,
             message: message.as_ref().to_string(),
         }
@@ -41,7 +42,7 @@ impl CoreError {
 
 impl From<CoreError> for CoreResponse<String> {
     fn from(error: CoreError) -> Self {
-        CoreResponse::<String>::new()
+        Self::new()
             .with_status(
                 http::StatusCode::from_u16(error.status).unwrap_or(http::StatusCode::BAD_REQUEST),
             )
@@ -51,7 +52,7 @@ impl From<CoreError> for CoreResponse<String> {
 
 impl Default for CoreError {
     fn default() -> Self {
-        CoreError::new()
+        Self::new()
     }
 }
 

@@ -8,27 +8,27 @@ pub enum Endpoint {
 
 impl From<&str> for Endpoint {
     fn from(url: &str) -> Self {
-        Endpoint::Url(url.to_string())
+        Self::Url(url.to_string())
     }
 }
 
 impl From<String> for Endpoint {
     fn from(url: String) -> Self {
-        Endpoint::Url(url)
+        Self::Url(url)
     }
 }
 
 impl From<(String, HashMap<String, String>)> for Endpoint {
     fn from((url, params): (String, HashMap<String, String>)) -> Self {
-        Endpoint::UrlWithParams(url, params)
+        Self::UrlWithParams(url, params)
     }
 }
 
 impl Endpoint {
     pub fn url(&self) -> String {
         match self {
-            Endpoint::Url(url) => url.clone(),
-            Endpoint::UrlWithParams(url, params) => {
+            Self::Url(url) => url.clone(),
+            Self::UrlWithParams(url, params) => {
                 let mut url_with_params = url.clone();
                 if params.is_empty() {
                     return url_with_params;
@@ -36,7 +36,7 @@ impl Endpoint {
 
                 url_with_params.push('?');
                 for (key, value) in params {
-                    url_with_params.push_str(&format!("&{}={}", key, value));
+                    url_with_params.push_str(&format!("&{key}={value}"));
                 }
                 url_with_params
             }

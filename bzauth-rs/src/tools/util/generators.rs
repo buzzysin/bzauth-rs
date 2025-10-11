@@ -9,7 +9,7 @@ use crate::contracts::provide::ProvideOAuth2;
 pub(crate) type Oauth2Client =
     BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet>;
 
-pub fn generate_client_from_auth(
+pub fn generate_client_from_provider(
     oauth2_provider: &dyn ProvideOAuth2,
 ) -> Result<Oauth2Client, UtilError> {
     let auth_url = oauth2_provider.auth_endpoint().url();

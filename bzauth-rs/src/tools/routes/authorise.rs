@@ -45,7 +45,7 @@ async fn authorise_oauth2(
         .as_oauth2()
         .ok_or_else(|| CoreError::new().with_message("Provider is not OAuth2"))?;
 
-    let client = generators::generate_client_from_auth(oauth2_provider)?;
+    let client = generators::generate_client_from_provider(oauth2_provider)?;
     // let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
     let state = generators::generate_state();

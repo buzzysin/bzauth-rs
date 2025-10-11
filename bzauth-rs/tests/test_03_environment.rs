@@ -3,7 +3,7 @@ mod mock;
 use bzauth_rs::auth::AuthOptions;
 use bzauth_rs::runtimes::axum::AxumRuntimeOptions;
 use mock::runtime::MOCK_AUTH_URL;
-use mock::{JsonStore, JsonStoreTypes, MOCK_PROVIDER_NAME, MockAdaptor, MockProvider};
+use mock::{JsonStore, JsonStoreTypes, MOCK_PROVIDER_NAME, MockAdaptor, MockProvider, requests};
 use tempfile::NamedTempFile;
 
 #[tokio::test]
@@ -21,7 +21,7 @@ async fn test_00_environment() {
     let auth_options = AuthOptions::new()
         .add_provider(Box::new(MockProvider))
         .with_adaptor(Box::new(MockAdaptor::new(json_store)));
-    let options = AxumRuntimeOptions::new(auth_options);
+    let options = AxumRuntimeOptions::from_options(auth_options);
 
     // Start the mock auth server
     mock::environment::axum_::run(signals, options, || async {
@@ -47,7 +47,7 @@ async fn test_01_auth_server_authorize() {
     let auth_options = AuthOptions::new()
         .add_provider(Box::new(MockProvider))
         .with_adaptor(Box::new(MockAdaptor::new(json_store)));
-    let options = AxumRuntimeOptions::new(auth_options);
+    let options = AxumRuntimeOptions::from_options(auth_options);
 
     // Start the mock auth server
     mock::environment::axum_::run(signals, options, || async {
@@ -55,17 +55,7 @@ async fn test_01_auth_server_authorize() {
         // For example, you could make requests to the server and assert responses
 
         // Fetch the authorization URL
-        let client = mock::provider_server::get_client();
-        let (url, _) = client
-            .authorize_url(oauth2::CsrfToken::new_random)
-            .add_scope(oauth2::Scope::new("read".to_string()))
-            .url();
-        println!("Authorization URL: {}", url);
-
-        // Make the reqwest
-        let response = reqwest::get(url.to_string())
-            .await
-            .expect("Failed to make request to auth server");
+        let response = requests::make_authorization_request().await;
 
         assert!(
             response.status().is_success(),
@@ -75,7 +65,6 @@ async fn test_01_auth_server_authorize() {
     .await;
 }
 
-#[allow(unused_attributes)]
 #[tokio::test]
 #[cfg_attr(
     not(feature = "test_sequential"),
@@ -91,38 +80,47 @@ async fn test_02_auth_server_callback() {
     let auth_options = AuthOptions::new()
         .add_provider(Box::new(MockProvider))
         .with_adaptor(Box::new(MockAdaptor::new(json_store.clone())));
-    let options = AxumRuntimeOptions::new(auth_options);
+    let options = AxumRuntimeOptions::from_options(auth_options);
 
     // Start the mock auth server
     mock::environment::axum_::run(signals, options, || async {
         // Simulate a callback request
-        let client = reqwest::Client::new();
-        let response = client
-            .post(format!("{}/callback/{}", MOCK_AUTH_URL, MOCK_PROVIDER_NAME))
-            .query(&[("code", "mock_auth_code"), ("state", "mock_state")])
-            .send()
-            .await
-            .expect("Failed to make request to auth server");
+        let response = requests::make_callback_request(MOCK_AUTH_URL, MOCK_PROVIDER_NAME).await;
 
         let url = response.url().to_string();
         let status = response.status();
-        let text = response.text().await.expect("Failed to read response text");
+        let cookies = response
+            .cookies()
+            .map(|c| format!("{}={}", c.name(), c.value()))
+            .collect::<Vec<_>>();
+        let user_info = response.text().await.expect("Failed to read response text");
 
+        // Assert that the request was successful
         assert!(
             status.is_success(),
             "Callback request failed:\n\turl: {}\n\tstatus: {}\n\tbody: {}",
             url,
             status,
-            text
+            user_info
         );
+
+        // Assert that the session cookie was set
+        assert!(
+            !cookies.is_empty(),
+            "No cookies were set in the response: {}",
+            cookies.join("; ")
+        );
+
+        // Print the cookies for debugging
+        println!("Cookies set in response: {}", cookies.join("; "));
 
         // Print the json store
         let data = json_store
             .get_data()
             .expect("Failed to get data from json store");
         println!(
-            "Final JSON store: {:?}",
-            serde_json::to_string_pretty(&data).unwrap()
+            "Final JSON store: {}",
+            serde_json::to_string(&data).unwrap()
         );
     })
     .await;

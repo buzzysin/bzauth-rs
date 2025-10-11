@@ -11,11 +11,11 @@ pub mod axum_ {
     use axum::routing::{Router, get, post};
 
     use super::*;
-    use crate::mock::runtime::MOCK_AUTH_URL;
+    use crate::mock::server_runtime::MOCK_AUTH_URL;
     use crate::mock::{MOCK_PROVIDER_NAME, Signals};
 
     async fn authorise() -> Html<String> {
-        println!("Mock Authorisation Endpoint Hit");
+        println!("[server:provider] Mock Authorisation Endpoint Hit");
         format!(
             r#"
             <!DOCTYPE html>
@@ -47,7 +47,7 @@ pub mod axum_ {
     }
 
     async fn token() -> Json<serde_json::Value> {
-        println!("Mock Token Endpoint Hit");
+        println!("[server:provider] Mock Token Endpoint Hit");
         Json(serde_json::json!({
             "access_token": "mock_access_token",
             "token_type": "Bearer",
@@ -57,7 +57,7 @@ pub mod axum_ {
     }
 
     async fn userinfo() -> Json<serde_json::Value> {
-        println!("Mock Userinfo Endpoint Hit");
+        println!("[server:provider] Mock Userinfo Endpoint Hit");
         Json(serde_json::json!({
             "sub": "1234567890",
             "name": "John Doe",
@@ -85,7 +85,7 @@ pub mod axum_ {
             .with_graceful_shutdown(async move {
                 // Wait for the shutdown signal
                 signals.wait_for_shutdown().await;
-                println!("Shutting down mock auth server...");
+                println!("[server:provider] Shutting down mock auth server...");
             })
             .await
     }

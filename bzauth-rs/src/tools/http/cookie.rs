@@ -54,8 +54,9 @@ impl std::fmt::Display for CookieAttribute {
 
 #[derive(Debug, Clone, Default)]
 pub enum SameSite {
-    #[default]
+    #[cfg_attr(not(debug_assertions), default)]
     Strict,
+    #[cfg_attr(debug_assertions, default)]
     Lax,
     None,
 }
@@ -108,7 +109,7 @@ pub struct Cookie {
     pub secure: bool,
     /// Whether the cookie is HTTP-only (not accessible via JavaScript)
     pub http_only: bool,
-    /// The SameSite attribute of the cookie
+    /// The SameSite attribute of the cookie (cookies can be Strict, Lax, or None)
     pub same_site: SameSite,
     /// The expiration date of the cookie
     pub expires: Option<i32>, // todo: use chrono::DateTime<Utc>,
@@ -121,11 +122,11 @@ impl Cookie {
         Cookie {
             name,
             value: None,
-            path: None,
+            path: Some("/".to_string()), // Default path is root
             domain: None,
             secure: false,
             http_only: false,
-            same_site: SameSite::Strict,
+            same_site: Default::default(),
             expires: None,
             max_age: None,
         }
@@ -233,16 +234,35 @@ impl FromStr for Cookie {
                 (full_key.to_string(), false, false)
             };
 
+            cookie.name = key.clone();
+
             match key.to_lowercase().as_str() {
-                "path" => cookie = cookie.with_path(value.to_string()),
-                "domain" => cookie = cookie.with_domain(value.to_string()),
-                "httponly" => cookie = cookie.with_http_only(value.parse().unwrap_or(false)),
-                "samesite" => {
-                    cookie = cookie.with_same_site(value.parse().unwrap_or(SameSite::Strict))
+                "path" => {
+                    tracing::debug!("[cookie] Setting cookie path: {}", value);
+                    cookie = cookie.with_path(value.to_string())
                 }
-                "expires" => cookie = cookie.with_expires(value.parse().unwrap_or(0)),
-                "max-age" => cookie = cookie.with_max_age(value.parse::<i32>().unwrap_or(0)),
+                "domain" => {
+                    tracing::debug!("[cookie] Setting cookie domain: {}", value);
+                    cookie = cookie.with_domain(value.to_string())
+                }
+                "httponly" => {
+                    tracing::debug!("[cookie] Setting cookie httpOnly: {}", value);
+                    cookie = cookie.with_http_only(value.parse().unwrap_or(false))
+                }
+                "samesite" => {
+                    tracing::debug!("[cookie] Setting cookie sameSite: {}", value);
+                    cookie = cookie.with_same_site(value.parse().unwrap_or_default())
+                }
+                "expires" => {
+                    tracing::debug!("[cookie] Setting cookie expires: {}", value);
+                    cookie = cookie.with_expires(value.parse().unwrap_or(0))
+                }
+                "max-age" => {
+                    tracing::debug!("[cookie] Setting cookie max-age: {}", value);
+                    cookie = cookie.with_max_age(value.parse::<i32>().unwrap_or(0))
+                }
                 _ => {
+                    tracing::debug!("[cookie] Setting cookie value: {}", value);
                     cookie = cookie.with_value(value.to_string());
                     if (secure) && !cookie.name.is_empty() {
                         // If the cookie is secure or a host cookie, we set the secure flag
@@ -276,9 +296,9 @@ impl Cookies {
         }
     }
 
-    pub fn set<K: Into<String>, V: Into<String>>(&mut self, name: K, value: V) {
-        let name = name.into();
-        let value = value.into();
+    pub fn set<K: AsRef<str>, V: AsRef<str>>(&mut self, name: K, value: V) {
+        let name = name.as_ref().to_string();
+        let value = value.as_ref().to_string();
 
         // If the cookie exists, update it
         if let Some(cookie) = self.cookies.get_mut(&name) {
@@ -290,8 +310,8 @@ impl Cookies {
         }
     }
 
-    pub fn get<K: Into<String>>(&self, name: K) -> Option<Cookie> {
-        let name = name.into();
+    pub fn get<K: AsRef<str>>(&self, name: K) -> Option<Cookie> {
+        let name = name.as_ref().to_string();
 
         self.cookies.get(&name).cloned().or_else(|| {
             // If the cookie is not found, return a default cookie
@@ -330,6 +350,7 @@ impl FromStr for Cookies {
 
         let mut currently_processing_cookie: Option<String> = None;
         for part in s.split(';') {
+            tracing::debug!("[cookie] Processing part: {}", part);
             let part = part.trim();
             let kv: Vec<&str> = part.split('=').collect();
             let k = kv.first().map(|s| s.trim()).unwrap_or("");
@@ -353,7 +374,7 @@ impl FromStr for Cookies {
                         }
                     } else {
                         // Start a new cookie
-                        currently_processing_cookie = Some(k.to_string());
+                        currently_processing_cookie = Some(part.to_string());
                     }
                 }
                 _ => {
@@ -367,6 +388,12 @@ impl FromStr for Cookies {
                     currently_processing_cookie = Some(part.to_string());
                 }
             }
+        }
+
+        // If we have a currently processing cookie, finalize it
+        if let Some(partial_cookie) = currently_processing_cookie {
+            let cookie = Cookie::from_str(&partial_cookie)?;
+            cookies.cookies.insert(cookie.name.clone(), cookie);
         }
 
         Ok(cookies)

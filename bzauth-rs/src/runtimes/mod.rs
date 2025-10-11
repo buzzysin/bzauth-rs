@@ -1,2 +1,2 @@
-#[cfg(feature = "runtime_axum")]
+#[cfg(feature = "axum")]
 pub mod axum;

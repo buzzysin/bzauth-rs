@@ -1,9 +1,5 @@
-use std::sync::Arc;
-
-use crate::auth::Auth;
 use crate::contracts::account::Account;
-use crate::contracts::adapt::Adapt;
-use crate::contracts::provide::Provide;
+use crate::contracts::adapt::{Adapt, AdaptSession, CreateSessionOptions};
 use crate::contracts::user::User;
 use crate::tools::request::CoreRequest;
 use crate::tools::response::CoreResponse;
@@ -11,32 +7,33 @@ use crate::tools::{CallbackRequest, CallbackResponse, CoreError};
 
 pub async fn sign_in(
     request: CoreRequest<CallbackRequest>,
-    _adapt_user: Option<User>,
-    _adapt_account: Option<Account>,
-    _provider: &dyn Provide,
-    _adaptor: &dyn Adapt,
-    auth: Arc<Auth>,
+    adapt_user: User,
+    _adapt_account: Account,
+    adaptor: &dyn Adapt,
+    session: Option<AdaptSession>, // auth: Arc<Auth>,
 ) -> Result<CoreResponse<CallbackResponse>, CoreError> {
-    // Infer the host from the request headers
-    let url = request.uri().to_string();
-    let host = request.headers().get("host").and_then(|h| h.to_str().ok());
-    if host.is_none() {
-        return Err(
-            CoreError::new().with_message("Failed to infer the host from the request headers")
-        );
-    }
+    // Create or define a new session for the user
 
-    // Convert the host to a string
-    let host = host.unwrap().to_string();
+    // If there is no session, generate a new one
+    let _session = if let Some(session) = session {
+        tracing::debug!("[callback] Using existing session: {:?}", session);
+        session
+    } else {
+        let session_token = uuid::Uuid::new_v4().to_string(); // Replace with actual session token generation logic
 
-    let redirect_callback = auth.options.callbacks.as_ref().map(|c| c.redirect.as_ref());
+        adaptor
+            .create_session(CreateSessionOptions {
+                user_id: adapt_user.id.clone().unwrap(),
+                token: session_token.to_string(),
+                expires_in: 60 * 60, // Set expiration time to 1 hour (3600 seconds)
+            })
+            .await
+            .ok_or_else(|| CoreError::new().with_message("Failed to create session"))?
+    };
 
-    if redirect_callback.is_none() {
-        return Err(CoreError::new().with_message("No redirect callback defined"));
-    }
-    let redirect_callback = redirect_callback.unwrap();
+    let redirect_url = request.extract_redirect_url().await?;
 
-    let redirect_url = redirect_callback(url.clone(), host).await;
-
-    Ok(CoreResponse::new().with_redirect(redirect_url))
+    Ok(CoreResponse::new()
+        .with_redirect(redirect_url)
+        .with_cookie("session".to_string(), _session.token.clone()))
 }

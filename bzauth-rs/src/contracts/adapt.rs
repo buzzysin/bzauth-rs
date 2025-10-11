@@ -33,8 +33,10 @@ pub struct AdaptSession {
     pub expires_in: u64,
 }
 impl AdaptSession {
+    /// # Panics
+    #[must_use]
     pub fn adapt_from(session: Session, token: String) -> Self {
-        AdaptSession {
+        Self {
             token,
             user_id: session.user.unwrap().id.unwrap(),
             expires_in: {

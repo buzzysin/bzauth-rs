@@ -25,7 +25,32 @@ pub enum SignInResult {
     Error(String),
 }
 
-pub type SignInCallback = Arc<dyn Fn(SignInOptions) -> Awaitable<SignInResult> + Send + Sync>;
+#[derive(Clone)]
+pub struct SignInCallback(Arc<dyn Fn(SignInOptions) -> Awaitable<SignInResult> + Send + Sync>);
+
+impl SignInCallback {
+    pub fn new<F>(callback: F) -> Self
+    where
+        F: Fn(SignInOptions) -> Awaitable<SignInResult> + Send + Sync + 'static,
+    {
+        Self(Arc::new(callback))
+    }
+}
+
+impl Deref for SignInCallback {
+    type Target = Arc<dyn Fn(SignInOptions) -> Awaitable<SignInResult> + Send + Sync>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Default for SignInCallback {
+    /// The default sign-in callback does nothing and returns a success result.
+    fn default() -> Self {
+        Self(Arc::new(|_| awaitable!(SignInResult::Success)))
+    }
+}
 
 #[derive(Clone)]
 pub struct RedirectCallback(Arc<dyn Fn(String, String) -> Awaitable<String> + Send + Sync>);
@@ -74,7 +99,7 @@ pub struct AuthCallbackOptions {
     pub redirect: RedirectCallback,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct AuthSessionOptions {
     pub strategy: Option<String>,
     pub max_age: Option<i64>,
@@ -131,6 +156,7 @@ impl AuthOptions {
     }
 }
 
+#[derive(Default)]
 pub struct Auth {
     pub options: AuthOptions,
 }

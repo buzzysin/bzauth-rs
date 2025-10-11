@@ -13,18 +13,38 @@ impl<T: RequestPayload> TryFromAsync<Request> for CoreRequest<T> {
     type Error = CoreError;
 
     async fn try_from_async(request: Request) -> Result<Self, Self::Error> {
+        tracing::debug!("[compat:axum] Converting Axum request to CoreRequest");
+
         let path = request.uri().path().to_string();
+        tracing::debug!("[compat:axum] Request URI: {}", request.uri());
+
         let method = request.method().to_string();
+        tracing::debug!("[compat:axum] Request method: {}", request.method());
+
         let uri = request.uri().clone();
+        tracing::debug!("[compat:axum] Request URI: {}", uri);
+
         let headers = request.headers().clone();
+        tracing::debug!("[compat:axum] Request headers: {:?}", headers);
+
         let cookies = request
             .headers()
             .get(axum::http::header::COOKIE)
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("")
+            .cloned()
+            .unwrap_or_else(|| {
+                tracing::debug!("[compat:axum] No cookies header found in request");
+                axum::http::HeaderValue::from_static("")
+            })
+            .to_str()
+            .ok()
+            .unwrap_or_else(|| {
+                tracing::debug!("[compat:axum] No cookies found in request headers");
+                ""
+            })
             .to_string()
             .parse()
             .unwrap_or_default();
+        tracing::debug!("[compat:axum] Request cookies: {:?}", cookies);
 
         // The auth cannot be read directly from the request, it must be passed in
         let auth = None;
@@ -34,6 +54,7 @@ impl<T: RequestPayload> TryFromAsync<Request> for CoreRequest<T> {
             .extract::<String, _>()
             .await
             .map_err(|_| CoreError::new().with_message("Failed to extract body"));
+        tracing::debug!("[compat:axum] Request body: {:?}", body);
 
         // Create the CoreRequest
         Ok(CoreRequest::new_unchecked(
@@ -56,6 +77,7 @@ where
         let mut response = axum::response::Response::default();
 
         // Set the body
+        tracing::debug!("[compat:axum] Setting response body: {:?}", self.payload);
         if let Some(body) = self.payload {
             *response.body_mut() = axum::body::Body::from(
                 serde_json::to_string(&body)
@@ -64,10 +86,12 @@ where
         }
 
         // Set the status code
+        tracing::debug!("[compat:axum] Setting status code: {}", self.status);
         *response.status_mut() = axum::http::StatusCode::from_u16(self.status.into())
             .unwrap_or(axum::http::StatusCode::OK);
 
         // Set the headers
+        tracing::debug!("[compat:axum] Setting headers: {:?}", self.headers);
         for (key, value) in self.headers {
             if let Some(key) = key {
                 response.headers_mut().insert(key, value);
@@ -75,12 +99,17 @@ where
         }
 
         // Set the cookies
-        for (_, value) in self.cookies.iter() {
+        tracing::debug!("[compat:axum] Setting cookies: {:?}", self.cookies);
+        for (_, cookie) in self.cookies.iter() {
             response.headers_mut().append(
                 axum::http::header::SET_COOKIE,
-                value.unparse().parse().unwrap(),
+                format!("{}", cookie.to_string())
+                    .parse()
+                    .expect("Invalid cookie header format"),
             );
         }
+
+        tracing::debug!("[compat:axum] Final response: {:?}", response);
 
         response
     }

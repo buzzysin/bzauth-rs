@@ -28,12 +28,12 @@ impl std::error::Error for ExtractProviderError {}
 impl IntoResponse for ExtractProviderError {
     fn into_response(self) -> axum::http::Response<axum::body::Body> {
         match self {
-            ExtractProviderError::MissingAuth(err) => axum::http::Response::builder()
+            Self::MissingAuth(err) => axum::http::Response::builder()
                 .status(401)
                 .body(axum::body::Body::from(err))
                 .unwrap(),
 
-            ExtractProviderError::MissingProvider(err) => axum::http::Response::builder()
+            Self::MissingProvider(err) => axum::http::Response::builder()
                 .status(404)
                 .body(axum::body::Body::from(err))
                 .unwrap(),

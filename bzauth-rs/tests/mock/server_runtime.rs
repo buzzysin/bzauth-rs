@@ -18,10 +18,12 @@ pub mod axum {
         let AxumRuntime { routes, auth } = AxumRuntime::from_options(options);
 
         let app = Router::new()
-        .route("/", axum::routing::get(|| async { "Mock Auth Server: Welcome Home 🏠" }))
-            .route("/health", axum::routing::get(|| async { "OK" }))
+            .route("/", axum::routing::get(|| async { 
+                println!("[server:runtime] Mock Auth Server: Welcome Home 🏠");
+                "Mock Auth Server: Welcome Home 🏠" 
+            }))
             // Add the auth routes
-        .merge(routes).layer(Extension(auth));
+            .merge(routes).layer(Extension(auth));
         let addr = (MOCK_AUTH_HOST, MOCK_AUTH_PORT);
         let listener = tokio::net::TcpListener::bind(addr).await?;
 
@@ -32,7 +34,7 @@ pub mod axum {
             .with_graceful_shutdown(async move {
                 // Wait for the shutdown signal
                 signals.wait_for_shutdown().await;
-                println!("Shutting down mock auth runtime...");
+                println!("[server:runtime] Shutting down mock auth runtime...");
             })
             .await
     }

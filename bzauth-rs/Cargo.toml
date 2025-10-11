@@ -4,22 +4,27 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["adapt_diesel", "runtime_axum", "backend_sqlite"]
+default = ["axum", "diesel", "sqlite", "test_unsafe_logging"]
 
 # Adapter features
-adapt_diesel = ["diesel"] # diesel -> adapt_diesel
-adapt_sqlx = ["sqlx"]     # sqlx -> adapt_sqlx
+diesel = ["dep:diesel"] # diesel -> adapt_diesel
+sqlx = ["dep:sqlx"]     # sqlx -> adapt_sqlx
 
 # Runtime features
-runtime_axum = ["axum"]       # Pulls in axum runtime support
-runtime_actix = ["actix-web"] # Pulls in actix-web runtime support
+axum = ["dep:axum"]       # Pulls in axum runtime support
+actix = ["dep:actix-web"] # Pulls in actix-web runtime support
 
 # Backend features
-backend_sqlite = ["diesel/sqlite", "diesel/returning_clauses_for_sqlite_3_35", "sqlx/sqlite"] # SQLite support
-backend_postgres = []                             # TODO: Add Postgres support
+sqlite = [
+  "diesel?/sqlite",
+  "diesel?/returning_clauses_for_sqlite_3_35",
+  "sqlx?/sqlite",
+] # SQLite support
+postgres = [] # TODO: Add Postgres support
 
 # Testing features
-test_sequential = []
+test_sequential = ["reqwest/cookies"]
+test_unsafe_logging = []
 
 [dependencies]
 # Core dependencies
@@ -31,15 +36,10 @@ reqwest = { version = "0.12", features = ["json"] }
 
 # Supported runtimes
 axum = { version = "0.8", features = ["macros", "json"], optional = true }
-actix-web = { version = "4.11", features = [
-  "macros",
-], optional = true } # TODO
+actix-web = { version = "4.11", features = ["macros"], optional = true }   # TODO
 
 # Data adapters
-diesel = { version = "2.2", features = [
-  "r2d2",
-  "chrono",
-], optional = true }
+diesel = { version = "2.2", features = ["r2d2", "chrono"], optional = true }
 sqlx = { version = "0.8", features = [
   "runtime-tokio-rustls",
   "chrono",
@@ -56,8 +56,17 @@ url = "2.5"
 rand = "0.9"
 uuid = { version = "1.17", features = ["v4"] }
 
-tracing = { version = "0.1", features = ["std"] }
-tracing-subscriber = { version = "0.3", features = ["std"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
 tempfile = "3.20"
+once_cell = "1.21"
+
+#
+# Tests
+#
+
+[[test]]
+name = "test_03_environment"
+required-features = ["test_sequential"]

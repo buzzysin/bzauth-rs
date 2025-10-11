@@ -10,19 +10,35 @@ use super::routes::{authorise, callback, csrf};
 use crate::auth::{Auth, AuthOptions};
 use crate::contracts::provide::Provide;
 
+#[derive(Default, Clone)]
 pub struct AxumRuntime {
     pub auth: Arc<Auth>,
     pub routes: Router,
 }
 
+#[derive(Default)]
 pub struct AxumRuntimeOptions {
     pub auth_options: AuthOptions,
 }
 
 impl AxumRuntimeOptions {
     /// Create a new Axum runtime options
-    pub fn new(auth_options: AuthOptions) -> Self {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_auth_options(self, auth_options: AuthOptions) -> Self {
         AxumRuntimeOptions { auth_options }
+    }
+
+    pub fn from_options(auth_options: AuthOptions) -> Self {
+        AxumRuntimeOptions { auth_options }
+    }
+}
+
+impl From<AxumRuntimeOptions> for AxumRuntime {
+    fn from(options: AxumRuntimeOptions) -> Self {
+        AxumRuntime::from_options(options)
     }
 }
 
@@ -93,5 +109,5 @@ impl Serialize for Box<dyn Provide> {
 }
 
 fn any<H: Handler<T, S>, T: 'static, S: Clone + Send + Sync + 'static>(f: H) -> MethodRouter<S> {
-    post(f.clone()).get(f.clone())
+    post(f.clone()).get(f)
 }
