@@ -24,33 +24,35 @@ pub struct AxumRuntimeOptions {
 impl AxumRuntimeOptions {
     /// Create a new Axum runtime options
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
 
+    #[must_use]
     pub fn with_auth_options(self, auth_options: AuthOptions) -> Self {
-        AxumRuntimeOptions { auth_options }
+        Self { auth_options }
     }
 
-    pub fn from_options(auth_options: AuthOptions) -> Self {
-        AxumRuntimeOptions { auth_options }
+    #[must_use]
+    pub const fn from_options(auth_options: AuthOptions) -> Self {
+        Self { auth_options }
     }
 }
 
 impl From<AxumRuntimeOptions> for AxumRuntime {
     fn from(options: AxumRuntimeOptions) -> Self {
-        AxumRuntime::from_options(options)
+        Self::from_options(options)
     }
 }
 
 impl AxumRuntime {
-    /// Create a new Axum runtime
+    /// Create a new Axum runtime from the given options    
     pub fn from_options(options: AxumRuntimeOptions) -> Self {
         let AxumRuntimeOptions { auth_options } = options;
-        let routes = AxumRuntime::create_router(&auth_options);
+        let routes = Self::create_router(&auth_options);
         let auth = Arc::new(Auth::from_options(auth_options));
 
         // Create the runtime
-        AxumRuntime { auth, routes }
+        Self { auth, routes }
     }
 
     fn create_router(auth_options: &AuthOptions) -> Router {

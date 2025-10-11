@@ -14,8 +14,8 @@ pub struct AuthoriseRequest {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthoriseResponse {}
 
-pub async fn authorise(
-    request: CoreRequest<AuthoriseRequest>,
+pub fn authorise(
+    request: &CoreRequest<AuthoriseRequest>,
 ) -> Result<CoreResponse<AuthoriseResponse>, CoreError> {
     // Extract the provider from the request
     let provider = request.extract_provider()?;
@@ -25,18 +25,18 @@ pub async fn authorise(
 
     // Dispatch to the appropriate authorisation function based on the provider type
     match provider_type {
-        ProviderType::OAuth => self::authorise_oauth2(request).await,
-        ProviderType::Email => self::authorise_email(request).await,
-        ProviderType::Credentials => self::authorise_credentials(request).await,
-        ProviderType::OIDC => self::authorise_oidc(request).await,
+        ProviderType::OAuth => self::authorise_oauth2(request),
+        ProviderType::Email => self::authorise_email(request),
+        ProviderType::Credentials => self::authorise_credentials(request),
+        ProviderType::OIDC => self::authorise_oidc(request),
     }
 }
 
-async fn authorise_oauth2(
-    request: CoreRequest<AuthoriseRequest>,
+fn authorise_oauth2(
+    request: &CoreRequest<AuthoriseRequest>,
 ) -> Result<CoreResponse<AuthoriseResponse>, CoreError> {
     // Stage the response with the request data
-    let mut response = CoreResponse::from_request(&request);
+    let mut response = CoreResponse::from_request(request);
 
     // Extract the provider from the request
     let provider = request.extract_provider()?;
@@ -60,8 +60,8 @@ async fn authorise_oauth2(
     {
         // Set the cookies in the response
         let mut cookies = Cookies::new();
-        cookies.set(COOKIE_STATE, state.clone());
-        cookies.set(COOKIE_CSRF_TOKEN, csrf_token.secret().to_string());
+        cookies.set(COOKIE_STATE, state);
+        cookies.set(COOKIE_CSRF_TOKEN, csrf_token.secret());
         // TODO: Set the PKCE verifier cookie if needed
         response = response.with_cookies(cookies);
     }
@@ -77,12 +77,12 @@ async fn authorise_oauth2(
     );
 
     // Redirect to the authorization URL
-    Ok(response.with_redirect(authorisation_url.to_string()))
+    Ok(response.with_redirect(authorisation_url.as_ref()))
 }
 
 // ignore
-async fn authorise_email(
-    request: CoreRequest<AuthoriseRequest>,
+fn authorise_email(
+    request: &CoreRequest<AuthoriseRequest>,
 ) -> Result<CoreResponse<AuthoriseResponse>, CoreError> {
     // Handle email provider authorisation
     let provider = request.extract_provider()?;
@@ -90,14 +90,14 @@ async fn authorise_email(
 
     // So far unsupported
     CoreError::new()
-        .with_message(format!("Unsupported provider type: {}", provider_type))
+        .with_message(format!("Unsupported provider type: {provider_type}"))
         .with_status(http::StatusCode::BAD_REQUEST.into())
         .into()
 }
 
 // ignore
-async fn authorise_credentials(
-    request: CoreRequest<AuthoriseRequest>,
+fn authorise_credentials(
+    request: &CoreRequest<AuthoriseRequest>,
 ) -> Result<CoreResponse<AuthoriseResponse>, CoreError> {
     // Handle credentials provider authorisation
     let provider = request.extract_provider()?;
@@ -105,14 +105,14 @@ async fn authorise_credentials(
 
     // So far unsupported
     CoreError::new()
-        .with_message(format!("Unsupported provider type: {}", provider_type))
+        .with_message(format!("Unsupported provider type: {provider_type}"))
         .with_status(http::StatusCode::BAD_REQUEST.into())
         .into()
 }
 
 // ignore
-async fn authorise_oidc(
-    request: CoreRequest<AuthoriseRequest>,
+fn authorise_oidc(
+    request: &CoreRequest<AuthoriseRequest>,
 ) -> Result<CoreResponse<AuthoriseResponse>, CoreError> {
     // Handle OIDC provider authorisation
     let provider = request.extract_provider()?;
@@ -120,7 +120,7 @@ async fn authorise_oidc(
 
     // So far unsupported
     CoreError::new()
-        .with_message(format!("Unsupported provider type: {}", provider_type))
+        .with_message(format!("Unsupported provider type: {provider_type}"))
         .with_status(http::StatusCode::BAD_REQUEST.into())
         .into()
 }

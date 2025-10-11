@@ -40,7 +40,7 @@ impl TryFrom<String> for ProviderType {
             "oauth" => Ok(Self::OAuth),
             "email" => Ok(Self::Email),
             "credentials" => Ok(Self::Credentials),
-            _ => Err(format!("Unknown provider type: {}", value)),
+            _ => Err(format!("Unknown provider type: {value}")),
         }
     }
 }

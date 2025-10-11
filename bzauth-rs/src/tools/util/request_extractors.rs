@@ -20,16 +20,16 @@ pub enum UtilError {
 impl From<UtilError> for CoreError {
     fn from(error: UtilError) -> Self {
         match error {
-            UtilError::MissingAuth(msg) => CoreError::new().with_message(msg),
-            UtilError::MissingProviderId(msg) => CoreError::new().with_message(msg),
-            UtilError::MissingProvider(msg) => CoreError::new().with_message(msg),
-            UtilError::ClientCreationFailed(msg) => CoreError::new().with_message(msg),
-            UtilError::InferHostFailed(msg) => CoreError::new().with_message(msg),
+            UtilError::MissingAuth(msg)
+            | UtilError::MissingProviderId(msg)
+            | UtilError::MissingProvider(msg)
+            | UtilError::ClientCreationFailed(msg)
+            | UtilError::InferHostFailed(msg) => Self::new().with_message(msg),
         }
     }
 }
 
-/// Extends the CoreRequest object
+/// Extends the `CoreRequest` object
 impl<T: RequestPayload> CoreRequest<T> {
     /// Extracts the auth object from the request.
     pub fn extract_auth(&self) -> Result<Arc<Auth>, UtilError> {
@@ -44,7 +44,7 @@ impl<T: RequestPayload> CoreRequest<T> {
             .split('/')
             .nth(2)
             .ok_or_else(|| UtilError::MissingProviderId("Provider ID not found".to_string()))
-            .map(|id| id.to_string())
+            .map(ToString::to_string)
     }
 
     /// Extracts the provider from the request based on the provider ID and auth options.
@@ -95,7 +95,7 @@ impl<T: RequestPayload> CoreRequest<T> {
         Ok(state)
     }
 
-    /// Extracts the OAuth2 client from the request.
+    /// Extracts the `OAuth2` client from the request.
     pub fn extract_oauth2_client(&self) -> Result<Oauth2Client, UtilError> {
         let provider = self.extract_provider()?;
         let oauth2_provider = provider
@@ -106,7 +106,7 @@ impl<T: RequestPayload> CoreRequest<T> {
         super::generators::generate_client_from_provider(oauth2_provider)
     }
 
-    /// Extracts the redirect url. If the BZAUTH_URL environment variable is not set,
+    /// Extracts the redirect url. If the `BZAUTH_URL` environment variable is not set,
     /// the request origin is used as a baseline
     pub async fn extract_redirect_url(&self) -> Result<String, UtilError> {
         let default_url = std::env::var("BZAUTH_URL");
@@ -114,10 +114,8 @@ impl<T: RequestPayload> CoreRequest<T> {
         let host = self.headers().get("host").and_then(|h| h.to_str().ok());
 
         let scheme = self.uri().scheme_str().unwrap_or("http");
-        let base_url = default_url.map_or_else(
-            |_| format!("{}://{}", scheme, host.unwrap_or("localhost")),
-            |url| url.to_string(),
-        );
+        let base_url =
+            default_url.unwrap_or_else(|_| format!("{}://{}", scheme, host.unwrap_or("localhost")));
 
         // Convert the host to a string
         let auth = self.extract_auth()?;

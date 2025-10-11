@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::response::CoreResponse;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CoreError {
     pub status: u16,
     pub message: String,
@@ -25,6 +25,7 @@ impl CoreError {
         }
     }
 
+    #[must_use]
     pub fn with_status(self, status: u16) -> Self {
         Self {
             status,
@@ -32,6 +33,7 @@ impl CoreError {
         }
     }
 
+    #[must_use]
     pub fn with_message<M: AsRef<str>>(self, message: M) -> Self {
         Self {
             status: self.status,
@@ -46,7 +48,7 @@ impl From<CoreError> for CoreResponse<String> {
             .with_status(
                 http::StatusCode::from_u16(error.status).unwrap_or(http::StatusCode::BAD_REQUEST),
             )
-            .with_payload(error.message)
+            .with_payload(&error.message)
     }
 }
 
@@ -56,16 +58,16 @@ impl Default for CoreError {
     }
 }
 
-/// Converts a CoreError into a Result type with the same error type.
+/// Converts a `CoreError` into a Result type with the same error type.
 impl<T> From<CoreError> for Result<T, CoreError> {
     fn from(err: CoreError) -> Self {
         Err(err)
     }
 }
 
-/// Converts a ParseError from the `oauth2` crate into a `CoreError`.
+/// Converts a `ParseError` from the `oauth2` crate into a `CoreError`.
 impl From<oauth2::url::ParseError> for CoreError {
     fn from(err: oauth2::url::ParseError) -> Self {
-        CoreError::new().with_message(err.to_string())
+        Self::new().with_message(err.to_string())
     }
 }

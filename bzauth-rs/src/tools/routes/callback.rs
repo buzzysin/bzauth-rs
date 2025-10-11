@@ -11,14 +11,19 @@ use crate::tools::request::CoreRequest;
 use crate::tools::response::CoreResponse;
 use crate::tools::{CoreError, actions, generators};
 
-impl<EF, TT> From<StandardTokenResponse<EF, TT>> for Token
+impl<EF, TT> TryFrom<StandardTokenResponse<EF, TT>> for Token
 where
     EF: oauth2::ExtraTokenFields,
     TT: oauth2::TokenType,
 {
-    fn from(token_response: StandardTokenResponse<EF, TT>) -> Self {
+    type Error = CoreError;
+
+    fn try_from(token_response: StandardTokenResponse<EF, TT>) -> Result<Self, CoreError> {
         // Serialize then deserialize to convert to the Token type
-        serde_json::from_value(serde_json::to_value(token_response).unwrap()).unwrap_or_default()
+        serde_json::from_value(serde_json::to_value(token_response).unwrap()).map_err(|e| {
+            tracing::error!("[callback] Failed to convert token response: {}", e);
+            CoreError::new().with_message("Failed to convert token response")
+        })
     }
 }
 
@@ -33,7 +38,7 @@ pub struct CallbackResponse {}
 
 // Handle the callback
 pub async fn callback(
-    request: CoreRequest<CallbackRequest>,
+    request: &CoreRequest<CallbackRequest>,
 ) -> Result<CoreResponse<CallbackResponse>, CoreError> {
     let provider = request.extract_provider()?;
     let provider_type = provider.provider_type();
@@ -50,14 +55,14 @@ pub async fn callback(
 }
 
 async fn callback_oauth2(
-    request: CoreRequest<CallbackRequest>,
+    request: &CoreRequest<CallbackRequest>,
 ) -> Result<CoreResponse<CallbackResponse>, CoreError> {
     /*
     Handle potential callback errors from the provider
     */
     if let Some(error) = request.query().get("error") {
         return Err(CoreError::new()
-            .with_message(format!("OAuth2 error: {}", error))
+            .with_message(format!("OAuth2 error: {error}"))
             .with_status(StatusCode::BAD_REQUEST.into()));
     }
 
@@ -95,17 +100,16 @@ async fn callback_oauth2(
         .ok_or_else(|| CoreError::new().with_message("Provider is not OAuth2"))?;
 
     let (profile_response, profile_user, adapt_account) =
-        helpers::get_provider_response(&request, oauth2_provider).await?;
+        helpers::get_provider_response(request, oauth2_provider).await?;
 
     /*
     Look for an account in the database that matches the provider account ID
     */
-    let provider_id = oauth2_provider.id().clone();
+    let provider_id = oauth2_provider.id();
     let profile_id = profile_response.id.clone();
     let profile_sub = profile_response.sub.clone();
     let provider_account_id = profile_id
         .or(profile_sub)
-        .clone()
         .ok_or_else(|| CoreError::new().with_message("Provider account ID is missing"))?;
     let adapt_user = adaptor
         .get_user_by_account(ProviderAccountId {
@@ -120,7 +124,7 @@ async fn callback_oauth2(
     */
     let auth = request.extract_auth()?;
     if let Some(authorisation_redirect) = helpers::get_authorisation_redirect(
-        &adapt_user.clone().or(Some(*profile_user.clone())),
+        adapt_user.as_ref().or_else(|| Some(profile_user.as_ref())),
         &adapt_account,
         &profile_response,
         auth.clone(),
@@ -140,7 +144,7 @@ async fn callback_oauth2(
     };
 
     let mut incoming_cookies = request.cookies().clone();
-    if let Ok(_) = &response {
+    if response.is_ok() {
         incoming_cookies.set(
             "session",
             session_token.unwrap_or_else(|| {
@@ -159,8 +163,9 @@ async fn callback_oauth2(
 }
 
 // ignore
+#[allow(clippy::unused_async)]
 async fn callback_email(
-    request: CoreRequest<CallbackRequest>,
+    request: &CoreRequest<CallbackRequest>,
 ) -> Result<CoreResponse<CallbackResponse>, CoreError> {
     // Handle email provider callback
     let provider = request.extract_provider()?;
@@ -168,13 +173,14 @@ async fn callback_email(
 
     // So far unsupported
     Err(CoreError::new()
-        .with_message(format!("Unsupported provider type: {}", provider_type))
+        .with_message(format!("Unsupported provider type: {provider_type}"))
         .with_status(StatusCode::BAD_REQUEST.into()))
 }
 
 // ignore
+#[allow(clippy::unused_async)]
 async fn callback_credentials(
-    request: CoreRequest<CallbackRequest>,
+    request: &CoreRequest<CallbackRequest>,
 ) -> Result<CoreResponse<CallbackResponse>, CoreError> {
     // Handle credentials provider callback
     let provider = request.extract_provider()?;
@@ -182,13 +188,14 @@ async fn callback_credentials(
 
     // So far unsupported
     Err(CoreError::new()
-        .with_message(format!("Unsupported provider type: {}", provider_type))
+        .with_message(format!("Unsupported provider type: {provider_type}"))
         .with_status(StatusCode::BAD_REQUEST.into()))
 }
 
 // ignore
+#[allow(clippy::unused_async)]
 async fn callback_oidc(
-    request: CoreRequest<CallbackRequest>,
+    request: &CoreRequest<CallbackRequest>,
 ) -> Result<CoreResponse<CallbackResponse>, CoreError> {
     // Handle OIDC provider callback
     let provider = request.extract_provider()?;
@@ -196,14 +203,18 @@ async fn callback_oidc(
 
     // So far unsupported
     Err(CoreError::new()
-        .with_message(format!("Unsupported provider type: {}", provider_type))
+        .with_message(format!("Unsupported provider type: {provider_type}"))
         .with_status(StatusCode::BAD_REQUEST.into()))
 }
 
 mod helpers {
     use std::sync::Arc;
 
-    use super::*;
+    use super::{
+        AdaptAccount, AdaptUser, AuthorizationCode, CallbackRequest, CallbackResponse, CoreError,
+        CoreRequest, CoreResponse, Profile, ProvideOAuth2, SignInOptions, SignInResult, StatusCode,
+        Token, TokenResponse, generators,
+    };
     use crate::auth::Auth;
     use crate::contracts::account::Account;
     use crate::contracts::user::User;
@@ -211,7 +222,7 @@ mod helpers {
     /// Delegates to the user-defined sign in check callback if it exists.
     /// This will redirect the user if they are not allowed to sign in
     pub async fn get_authorisation_redirect(
-        adapt_or_profile_user: &Option<AdaptUser>,
+        adapt_or_profile_user: Option<&AdaptUser>,
         adapt_account: &AdaptAccount,
         profile: &Profile,
         auth: Arc<Auth>,
@@ -225,7 +236,7 @@ mod helpers {
         tracing::debug!("[callback:sign_in] Running user defined sign in check");
 
         let sign_in_options = SignInOptions {
-            user: adapt_or_profile_user.clone(),
+            user: adapt_or_profile_user.cloned(),
             account: Some(adapt_account.clone()),
             profile: Some(profile.clone()),
         };
@@ -245,7 +256,7 @@ mod helpers {
                     "[callback:sign_in] User defined sign in check redirecting to: {}",
                     url
                 );
-                Some(Ok(CoreResponse::redirect(url)))
+                Some(Ok(CoreResponse::redirect(&url)))
             }
             SignInResult::Success => {
                 tracing::debug!("[callback:sign_in] User defined sign in check succeeded");
@@ -270,7 +281,7 @@ mod helpers {
             .await
             .map_err(|e| {
                 CoreError::new()
-                    .with_message(format!("Failed to exchange code: (error={})", e))
+                    .with_message(format!("Failed to exchange code: (error={e})"))
                     .with_status(StatusCode::BAD_REQUEST.into())
             })?;
         tracing::debug!("[callback] Token: {:?}", token_response.access_token());
@@ -287,14 +298,14 @@ mod helpers {
         .await
         .map_err(|e| {
             CoreError::new()
-                .with_message(format!("Failed to fetch user info: (error={})", e))
+                .with_message(format!("Failed to fetch user info: (error={e})"))
                 .with_status(StatusCode::BAD_REQUEST.into())
         })?
         .json::<Profile>()// TODO: Change to a proper user info type
         .await
         .map_err(|e| {
             CoreError::new()
-                .with_message(format!("Failed to parse user info: (error={})", e))
+                .with_message(format!("Failed to parse user info: (error={e})"))
                 .with_status(StatusCode::BAD_REQUEST.into())
         })?;
         tracing::debug!("[callback] User Info: {:?}", profile_response);
@@ -302,27 +313,32 @@ mod helpers {
         let profile_user = {
             let mut profile_user = oauth2_provider.get_profile(profile_response.clone());
             profile_user.id = Some(uuid::Uuid::new_v4().to_string());
-            profile_user.email = profile_response.email.clone();
+            profile_user.email.clone_from(&profile_response.email);
             profile_user
         };
 
         /*
            Prepare the AdaptAccount to be stored in the database.
         */
-        let adapt_token = Token::from(token_response.clone());
+        let adapt_token = Token::try_from(token_response.clone()).map_err(|e| {
+            CoreError::new()
+                .with_message(format!("Failed to convert token response: (error={e})"))
+                .with_status(StatusCode::BAD_REQUEST.into())
+        })?;
+        tracing::debug!("[callback] Adapted Token: {:?}", adapt_token);
         let adapt_account_id = uuid::Uuid::new_v4().to_string();
-        let adapt_provider_id = oauth2_provider.id().to_string();
+        let adapt_provider_id = oauth2_provider.id();
         let adapt_provider_type = oauth2_provider.provider_type();
         let adapt_account = AdaptAccount {
-            id: Some(adapt_account_id.clone()),
+            id: Some(adapt_account_id),
             user_id: profile_user.id.clone(),
-            provider_id: Some(adapt_provider_id.clone()),
+            provider_id: Some(adapt_provider_id),
             provider_type: adapt_provider_type,
             // For OAuth2, the provider account ID is usually the user ID/Sub from the provider
             provider_account_id: Some(
                 vec![profile_response.id.clone(), profile_response.sub.clone()]
                     .into_iter()
-                    .filter_map(|id| id)
+                    .flatten()
                     .next()
                     .ok_or_else(|| {
                         CoreError::new()

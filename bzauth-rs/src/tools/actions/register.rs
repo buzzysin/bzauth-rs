@@ -5,8 +5,11 @@ use crate::tools::request::CoreRequest;
 use crate::tools::response::CoreResponse;
 use crate::tools::{CallbackRequest, CallbackResponse, CoreError};
 
+/// # Panics
+/// This function will panic if the `profile_user.id` is `None` after user creation
+/// or if there are issues generating the session token. THIS IS A BUG AND SHOULD BE FIXED.
 pub async fn register(
-    _request: CoreRequest<CallbackRequest>,
+    request: CoreRequest<CallbackRequest>,
     profile_user: User,
     adapt_account: Account,
     adaptor: &dyn Adapt,
@@ -41,19 +44,19 @@ pub async fn register(
             expires_in: 3600, // TODO: Set appropriate expiration time from configuration
         })
         .await;
-    tracing::debug!("[callback:register] Created Session: {:?}", session);
+    tracing::debug!("[callback:register] Created Session: {session:?}");
 
-    let mut cookies = _request.cookies().clone();
+    let mut cookies = request.cookies().clone();
     cookies.set("session", session_generated.to_string());
 
     #[cfg(debug_assertions)]
-    println!("[register] Cookies after registration: {:?}", cookies);
+    println!("[register] Cookies after registration: {cookies:?}");
 
     // Infer the host from the request headers
-    let redirect_url = _request.extract_redirect_url().await?;
+    let redirect_url = request.extract_redirect_url().await?;
 
     // TODO: If a callback-url cookie is set, use that instead of redirecting to the home page
     Ok(CoreResponse::new()
-        .with_redirect(redirect_url)
+        .with_redirect(&redirect_url)
         .with_cookies(cookies.clone()))
 }

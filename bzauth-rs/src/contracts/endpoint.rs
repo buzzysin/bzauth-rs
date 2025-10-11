@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Write as _; // for write!
 
 #[derive(Debug, Clone)]
 pub enum Endpoint {
@@ -36,7 +37,9 @@ impl Endpoint {
 
                 url_with_params.push('?');
                 for (key, value) in params {
-                    url_with_params.push_str(&format!("&{key}={value}"));
+                    // url_with_params.push_str(&format!("&{key}={value}"));
+                    // using write!
+                    let _ = write!(url_with_params, "&{key}={value}");
                 }
                 url_with_params
             }

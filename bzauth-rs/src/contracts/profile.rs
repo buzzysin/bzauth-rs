@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// Represents the profile of a user, as returned by an OAuth2 provider. Not every field is guaranteed to be present.
+/// Represents the profile of a user, as returned by an `OAuth2` provider. Not every field is guaranteed to be present.
 /// <https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims>
 ///
 /// Note: GDPR warning - a lot of these fields are considered personal data.

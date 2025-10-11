@@ -4,10 +4,12 @@ pub struct AdaptorError {
 }
 
 impl AdaptorError {
-    pub fn new(message: String) -> Self {
-        AdaptorError { message }
+    #[must_use]
+    pub const fn new(message: String) -> Self {
+        Self { message }
     }
 
+    #[must_use]
     pub fn with_message(mut self, message: String) -> Self {
         self.message = message;
         self

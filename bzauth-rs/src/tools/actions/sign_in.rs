@@ -5,6 +5,9 @@ use crate::tools::request::CoreRequest;
 use crate::tools::response::CoreResponse;
 use crate::tools::{CallbackRequest, CallbackResponse, CoreError};
 
+/// # Panics
+/// This function will panic if the `adapt_user.id` is `None` after user creation
+/// or if there are issues generating the session token. THIS IS A BUG AND SHOULD BE FIXED.
 pub async fn sign_in(
     request: CoreRequest<CallbackRequest>,
     adapt_user: User,
@@ -15,7 +18,7 @@ pub async fn sign_in(
     // Create or define a new session for the user
 
     // If there is no session, generate a new one
-    let _session = if let Some(session) = session {
+    let session = if let Some(session) = session {
         tracing::debug!("[callback] Using existing session: {:?}", session);
         session
     } else {
@@ -34,6 +37,6 @@ pub async fn sign_in(
     let redirect_url = request.extract_redirect_url().await?;
 
     Ok(CoreResponse::new()
-        .with_redirect(redirect_url)
-        .with_cookie("session".to_string(), _session.token.clone()))
+        .with_redirect(&redirect_url)
+        .with_cookie("session".to_string(), session.token.clone()))
 }

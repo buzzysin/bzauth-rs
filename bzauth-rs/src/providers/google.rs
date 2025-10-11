@@ -33,7 +33,7 @@ pub struct GoogleProvider {
     auth_endpoint: Endpoint,
     token_endpoint: Endpoint,
     userinfo_endpoint: Endpoint,
-    _profile: fn(profile: GoogleProfile) -> Box<User>,
+    profile: fn(profile: GoogleProfile) -> Box<User>,
     _options: GoogleProviderOptions,
 }
 
@@ -44,9 +44,12 @@ pub struct GoogleProviderOptions {
 }
 
 impl GoogleProvider {
-    /// Create a new GoogleProvider with default options
+    /// Create a new `GoogleProvider` with default options
     ///
-    /// This will use the environment variables GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
+    /// This will use the environment variables `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
+    /// # Panics
+    /// This function will panic if the required environment variables are not set.
+    #[must_use]
     pub fn new() -> Self {
         Self::from_options(GoogleProviderOptions {
             client_id: std::env::var("GOOGLE_CLIENT_ID").ok(),
@@ -59,13 +62,13 @@ impl GoogleProvider {
         let client_id = options
             .clone()
             .client_id
-            .ok_or(ProviderError::MissingClientId("".to_string()))?;
+            .ok_or_else(|| ProviderError::MissingClientId(String::new()))?;
         let client_secret = options
             .clone()
             .client_secret
-            .ok_or(ProviderError::MissingClientSecret("".to_string()))?;
+            .ok_or_else(|| ProviderError::MissingClientSecret(String::new()))?;
 
-        let provider = GoogleProvider {
+        let provider = Self {
             id: "google".to_string(),
             name: "Google".to_string(),
             provider_type: ProviderType::OAuth,
@@ -81,7 +84,7 @@ impl GoogleProvider {
             )),
             token_endpoint: "https://oauth2.googleapis.com/token".into(),
             userinfo_endpoint: "https://openidconnect.googleapis.com/v1/userinfo".into(),
-            _profile: |profile| {
+            profile: |profile| {
                 Box::new(User {
                     // todo.
                     id: Some(profile.sub),
@@ -98,7 +101,7 @@ impl GoogleProvider {
 }
 
 impl Default for GoogleProvider {
-    /// Create a new GoogleProvider with default options
+    /// Create a new `GoogleProvider` with default options
     fn default() -> Self {
         Self::new()
     }
@@ -137,26 +140,29 @@ impl ProvideOAuth2 for GoogleProvider {
     }
 }
 
-impl From<Profile> for GoogleProfile {
-    #[allow(unused_variables)]
-    fn from(value: Profile) -> Self {
+impl TryFrom<Profile> for GoogleProfile {
+    type Error = ProviderError;
+
+    fn try_from(value: Profile) -> Result<Self, Self::Error> {
         // Pick from others: aud, azp, exp, hd, iat, iss
-        let aud = value.others.get("aud").cloned().unwrap_or_default();
-        let azp = value.others.get("azp").cloned().unwrap_or_default();
-        let exp = value
+        let _aud = value.others.get("aud").cloned().unwrap_or_default();
+        let _azp = value.others.get("azp").cloned().unwrap_or_default();
+        let _exp = value
             .others
             .get("exp")
-            .and_then(|v| v.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .unwrap_or(0);
-        let iat = value
+
+        let _iat = value
             .others
             .get("iat")
-            .and_then(|v| v.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .unwrap_or(0);
-        let hd = value.others.get("hd").cloned().unwrap_or_default();
-        let iss = value.others.get("iss").cloned().unwrap_or_default();
 
-        GoogleProfile {
+        let _hd = value.others.get("hd").cloned().unwrap_or_default();
+        let _iss = value.others.get("iss").cloned().unwrap_or_default();
+
+        Ok(Self {
             // aud: value.aud,
             // azp: value.azp,
             email: value.email.unwrap(),
@@ -171,12 +177,15 @@ impl From<Profile> for GoogleProfile {
             picture: value.picture.unwrap_or_default(),
             sub: value.sub.unwrap_or_default(),
             ..Default::default()
-        }
+        })
     }
 }
 
 impl ProvidesProfile for GoogleProvider {
     fn get_profile(&self, profile: Profile) -> Box<User> {
-        (self._profile)(profile.into())
+        // TODO: Handle the error properly
+        let profile: GoogleProfile = profile.try_into().unwrap();
+
+        (self.profile)(profile)
     }
 }

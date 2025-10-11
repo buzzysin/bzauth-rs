@@ -17,18 +17,18 @@ pub enum Status {
 }
 
 impl Status {
-    pub fn to_u16(&self) -> u16 {
+    pub const fn to_u16(&self) -> u16 {
         match self {
-            Status::Ok => 200,
-            Status::Redirect => 302,
-            Status::MovedPermanently => 301,
-            Status::TemporaryRedirect => 307,
-            Status::PermanentRedirect => 308,
-            Status::BadRequest => 400,
-            Status::Unauthorized => 401,
-            Status::Forbidden => 403,
-            Status::NotFound => 404,
-            Status::InternalServerError => 500,
+            Self::Ok => 200,
+            Self::Redirect => 302,
+            Self::MovedPermanently => 301,
+            Self::TemporaryRedirect => 307,
+            Self::PermanentRedirect => 308,
+            Self::BadRequest => 400,
+            Self::Unauthorized => 401,
+            Self::Forbidden => 403,
+            Self::NotFound => 404,
+            Self::InternalServerError => 500,
         }
     }
 }

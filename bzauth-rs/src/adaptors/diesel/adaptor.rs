@@ -1,6 +1,11 @@
+#![allow(clippy::type_repetition_in_bounds)]
+
 use diesel::r2d2::{ManageConnection, Pool};
 
-use super::traits::*;
+use super::traits::{
+    AdaptAccountOperation, AdaptSessionOperation, AdaptUserOperation,
+    AdaptVerificationTokenOperation,
+};
 use crate::contracts::adapt::{
     Adapt, AdaptAccount, AdaptSession, AdaptUser, AdaptVerificationToken, CreateSessionOptions,
     ProviderAccountId, SessionUser, UseVerificationTokenOptions,
@@ -51,7 +56,7 @@ where
     Adaptor: AdaptSessionOperation<M::Connection, Model = SessionModel>,
     Adaptor: AdaptVerificationTokenOperation<M::Connection, Model = VerificationTokenModel>,
 {
-    pub fn from_options(
+    pub const fn from_options(
         options: DieselAdapterOptions<
             M,
             Adaptor,

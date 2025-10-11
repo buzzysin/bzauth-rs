@@ -26,13 +26,13 @@ impl FromStr for CookieAttribute {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Path" => Ok(CookieAttribute::Path),
-            "Domain" => Ok(CookieAttribute::Domain),
-            "Secure" => Ok(CookieAttribute::Secure),
-            "HttpOnly" => Ok(CookieAttribute::HttpOnly),
-            "SameSite" => Ok(CookieAttribute::SameSite),
-            "Expires" => Ok(CookieAttribute::Expires),
-            "Max-Age" => Ok(CookieAttribute::MaxAge),
+            "Path" => Ok(Self::Path),
+            "Domain" => Ok(Self::Domain),
+            "Secure" => Ok(Self::Secure),
+            "HttpOnly" => Ok(Self::HttpOnly),
+            "SameSite" => Ok(Self::SameSite),
+            "Expires" => Ok(Self::Expires),
+            "Max-Age" => Ok(Self::MaxAge),
             _ => Err(ParseCookieAttributeError(s.to_string())),
         }
     }
@@ -41,13 +41,13 @@ impl FromStr for CookieAttribute {
 impl std::fmt::Display for CookieAttribute {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CookieAttribute::Path => write!(f, "Path"),
-            CookieAttribute::Domain => write!(f, "Domain"),
-            CookieAttribute::Secure => write!(f, "Secure"),
-            CookieAttribute::HttpOnly => write!(f, "HttpOnly"),
-            CookieAttribute::SameSite => write!(f, "SameSite"),
-            CookieAttribute::Expires => write!(f, "Expires"),
-            CookieAttribute::MaxAge => write!(f, "Max-Age"),
+            Self::Path => write!(f, "Path"),
+            Self::Domain => write!(f, "Domain"),
+            Self::Secure => write!(f, "Secure"),
+            Self::HttpOnly => write!(f, "HttpOnly"),
+            Self::SameSite => write!(f, "SameSite"),
+            Self::Expires => write!(f, "Expires"),
+            Self::MaxAge => write!(f, "Max-Age"),
         }
     }
 }
@@ -77,9 +77,9 @@ impl FromStr for SameSite {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Strict" => Ok(SameSite::Strict),
-            "Lax" => Ok(SameSite::Lax),
-            "None" => Ok(SameSite::None),
+            "Strict" => Ok(Self::Strict),
+            "Lax" => Ok(Self::Lax),
+            "None" => Ok(Self::None),
             _ => Err(ParseSameSiteError(s.to_string())),
         }
     }
@@ -88,9 +88,9 @@ impl FromStr for SameSite {
 impl std::fmt::Display for SameSite {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SameSite::Strict => write!(f, "Strict"),
-            SameSite::Lax => write!(f, "Lax"),
-            SameSite::None => write!(f, "None"),
+            Self::Strict => write!(f, "Strict"),
+            Self::Lax => write!(f, "Lax"),
+            Self::None => write!(f, "None"),
         }
     }
 }
@@ -109,7 +109,7 @@ pub struct Cookie {
     pub secure: bool,
     /// Whether the cookie is HTTP-only (not accessible via JavaScript)
     pub http_only: bool,
-    /// The SameSite attribute of the cookie (cookies can be Strict, Lax, or None)
+    /// The `SameSite` attribute of the cookie (cookies can be Strict, Lax, or None)
     pub same_site: SameSite,
     /// The expiration date of the cookie
     pub expires: Option<i32>, // todo: use chrono::DateTime<Utc>,
@@ -119,54 +119,66 @@ pub struct Cookie {
 
 impl Cookie {
     pub fn new(name: String) -> Self {
-        Cookie {
+        Self {
             name,
             value: None,
             path: Some("/".to_string()), // Default path is root
             domain: None,
             secure: false,
             http_only: false,
-            same_site: Default::default(),
+            same_site: SameSite::default(),
             expires: None,
             max_age: None,
         }
     }
 
+    #[must_use]
     pub fn with_value(self, value: String) -> Self {
-        Cookie {
+        Self {
             value: Some(value),
             ..self
         }
     }
+
+    #[must_use]
     pub fn with_path(self, path: String) -> Self {
-        Cookie {
+        Self {
             path: Some(path),
             ..self
         }
     }
+
+    #[must_use]
     pub fn with_domain(self, domain: String) -> Self {
-        Cookie {
+        Self {
             domain: Some(domain),
             ..self
         }
     }
+
+    #[must_use]
     pub fn with_secure(self, secure: bool) -> Self {
-        Cookie { secure, ..self }
+        Self { secure, ..self }
     }
+
+    #[must_use]
     pub fn with_http_only(self, http_only: bool) -> Self {
-        Cookie { http_only, ..self }
+        Self { http_only, ..self }
     }
+    #[must_use]
     pub fn with_same_site(self, same_site: SameSite) -> Self {
-        Cookie { same_site, ..self }
+        Self { same_site, ..self }
     }
+    #[must_use]
     pub fn with_expires(self, expires: i32) -> Self {
-        Cookie {
+        Self {
             expires: Some(expires),
             ..self
         }
     }
+    #[must_use]
     pub fn with_max_age(self, max_age: i32) -> Self {
-        Cookie {
+        Self {
             max_age: Some(max_age),
             ..self
         }
@@ -178,29 +190,32 @@ impl Cookie {
     ///
     /// [Cookies]: struct.Cookies.html
     pub fn unparse(&self) -> String {
-        let mut cookie_string = format!(
-            "{}={}",
-            self.name,
-            self.value.as_ref().unwrap_or(&"".to_string())
-        );
+        let mut cookie_string = format!("{}={}", self.name, self.value.clone().unwrap_or_default());
+
         if let Some(path) = &self.path {
-            cookie_string.push_str(&format!("; Path={}", path));
+            cookie_string.push_str(&format!("; Path={path}"));
         }
+
         if let Some(domain) = &self.domain {
-            cookie_string.push_str(&format!("; Domain={}", domain));
+            cookie_string.push_str(&format!("; Domain={domain}"));
         }
+
         if self.secure {
             cookie_string.push_str("; Secure");
         }
+
         if self.http_only {
             cookie_string.push_str("; HttpOnly");
         }
+
         cookie_string.push_str(&format!("; SameSite={}", self.same_site));
+
         if let Some(expires) = &self.expires {
-            cookie_string.push_str(&format!("; Expires={}", expires));
+            cookie_string.push_str(&format!("; Expires={expires}"));
         }
+
         if let Some(max_age) = self.max_age {
-            cookie_string.push_str(&format!("; Max-Age={}", max_age));
+            cookie_string.push_str(&format!("; Max-Age={max_age}"));
         }
 
         cookie_string
@@ -210,69 +225,88 @@ impl Cookie {
 impl FromStr for Cookie {
     type Err = std::string::ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut cookie = Cookie::new("".to_string());
+        let mut cookie = Self::new(String::new());
 
         for part in s.split(';') {
             let mut kv = part.split('=');
             let full_key = kv.next().unwrap_or("").trim().to_string();
-            let value = kv.next().unwrap_or("").trim();
 
             // Secure/Host cookies have a prefix: __Secure-Name=Value or __Host-Name=Value
-            let (key, secure, _host) = if full_key.to_lowercase().starts_with("__secure-") {
-                (
-                    full_key.trim_start_matches("__secure-").to_string(),
-                    true,
-                    false,
-                )
-            } else if full_key.starts_with("__host-") {
-                (
-                    full_key.trim_start_matches("__host-").to_string(),
-                    false,
-                    true,
-                )
-            } else {
-                (full_key.to_string(), false, false)
-            };
+            let (key, secure) = analyze_cookie_prefix(&full_key);
+            let value = kv.next().unwrap_or("").trim();
 
-            cookie.name = key.clone();
-
-            match key.to_lowercase().as_str() {
-                "path" => {
-                    tracing::debug!("[cookie] Setting cookie path: {}", value);
-                    cookie = cookie.with_path(value.to_string())
-                }
-                "domain" => {
-                    tracing::debug!("[cookie] Setting cookie domain: {}", value);
-                    cookie = cookie.with_domain(value.to_string())
-                }
-                "httponly" => {
-                    tracing::debug!("[cookie] Setting cookie httpOnly: {}", value);
-                    cookie = cookie.with_http_only(value.parse().unwrap_or(false))
-                }
-                "samesite" => {
-                    tracing::debug!("[cookie] Setting cookie sameSite: {}", value);
-                    cookie = cookie.with_same_site(value.parse().unwrap_or_default())
-                }
-                "expires" => {
-                    tracing::debug!("[cookie] Setting cookie expires: {}", value);
-                    cookie = cookie.with_expires(value.parse().unwrap_or(0))
-                }
-                "max-age" => {
-                    tracing::debug!("[cookie] Setting cookie max-age: {}", value);
-                    cookie = cookie.with_max_age(value.parse::<i32>().unwrap_or(0))
-                }
-                _ => {
-                    tracing::debug!("[cookie] Setting cookie value: {}", value);
-                    cookie = cookie.with_value(value.to_string());
-                    if (secure) && !cookie.name.is_empty() {
-                        // If the cookie is secure or a host cookie, we set the secure flag
-                        cookie = cookie.with_secure(secure);
-                    }
-                }
+            // Set the cookie name only once
+            if cookie.name.is_empty() && !key.is_empty() {
+                cookie.name.clone_from(&key);
             }
+
+            process_cookie_attribute(&mut cookie, &key, value, secure);
         }
         Ok(cookie)
     }
+}
+
+#[allow(clippy::cognitive_complexity)]
+fn process_cookie_attribute(cookie: &mut Cookie, key: &str, value: &str, secure: bool) {
+    match key.to_lowercase().as_str() {
+        "path" => {
+            tracing::debug!("[cookie] Setting cookie path: {}", value);
+            *cookie = cookie.clone().with_path(value.to_string());
+        }
+        "domain" => {
+            tracing::debug!("[cookie] Setting cookie domain: {}", value);
+            *cookie = cookie.clone().with_domain(value.to_string());
+        }
+        "httponly" => {
+            tracing::debug!("[cookie] Setting cookie httpOnly: {}", value);
+            *cookie = cookie
+                .clone()
+                .with_http_only(value.parse().unwrap_or(false));
+        }
+        "samesite" => {
+            tracing::debug!("[cookie] Setting cookie sameSite: {}", value);
+            *cookie = cookie
+                .clone()
+                .with_same_site(value.parse().unwrap_or_default());
+        }
+        "expires" => {
+            tracing::debug!("[cookie] Setting cookie expires: {}", value);
+            *cookie = cookie.clone().with_expires(value.parse().unwrap_or(0));
+        }
+        "max-age" => {
+            tracing::debug!("[cookie] Setting cookie max-age: {}", value);
+            *cookie = cookie
+                .clone()
+                .with_max_age(value.parse::<i32>().unwrap_or(0));
+        }
+        _ => {
+            tracing::debug!("[cookie] Setting cookie value: {}", value);
+            *cookie = cookie.clone().with_value(value.to_string());
+            if (secure) && !cookie.name.is_empty() {
+                // If the cookie is secure or a host cookie, we set the secure flag
+                *cookie = cookie.clone().with_secure(secure);
+            }
+        }
+    }
+}
+
+fn analyze_cookie_prefix(full_key: &str) -> (String, bool) {
+    let (key, secure, _host) = if full_key.to_lowercase().starts_with("__secure-") {
+        (
+            full_key.trim_start_matches("__secure-").to_string(),
+            true,
+            false,
+        )
+    } else if full_key.starts_with("__host-") {
+        (
+            full_key.trim_start_matches("__host-").to_string(),
+            false,
+            true,
+        )
+    } else {
+        (full_key.to_string(), false, false)
+    };
+    (key, secure)
 }
 
 impl std::fmt::Display for Cookie {
@@ -291,7 +325,7 @@ pub struct Cookies {
 
 impl Cookies {
     pub fn new() -> Self {
-        Cookies {
+        Self {
             cookies: HashMap::new(),
         }
     }
@@ -323,7 +357,7 @@ impl Cookies {
         self.cookies.remove(name);
     }
 
-    pub fn extend(&mut self, other: Cookies) {
+    pub fn extend(&mut self, other: Self) {
         for (name, cookie) in other.cookies {
             self.cookies.insert(name, cookie);
         }
@@ -332,7 +366,7 @@ impl Cookies {
     pub fn unparse(&self) -> String {
         self.cookies
             .values()
-            .map(|cookie| cookie.unparse())
+            .map(Cookie::unparse)
             .collect::<Vec<String>>()
             .join("; ")
     }
@@ -346,15 +380,15 @@ impl FromStr for Cookies {
     type Err = std::string::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut cookies = Cookies::new();
+        let mut cookies = Self::new();
 
         let mut currently_processing_cookie: Option<String> = None;
         for part in s.split(';') {
             tracing::debug!("[cookie] Processing part: {}", part);
             let part = part.trim();
             let kv: Vec<&str> = part.split('=').collect();
-            let k = kv.first().map(|s| s.trim()).unwrap_or("");
-            let v = kv.get(1).map(|s| s.trim()).unwrap_or("");
+            let k = kv.first().map_or("", |s| s.trim());
+            let v = kv.get(1).map_or("", |s| s.trim());
 
             // Skip empty parts
             if k.is_empty() {
@@ -367,10 +401,10 @@ impl FromStr for Cookies {
                     if let Some(partial_cookie) = &mut currently_processing_cookie {
                         if v.is_empty() {
                             // Probably a Secure or HttpOnly attribute without a value
-                            partial_cookie.push_str(&format!("; {}", k));
+                            partial_cookie.push_str(&format!("; {k}"));
                         } else {
                             // Probably a key-value pair
-                            partial_cookie.push_str(&format!("; {}={}", k, v));
+                            partial_cookie.push_str(&format!("; {k}={v}"));
                         }
                     } else {
                         // Start a new cookie

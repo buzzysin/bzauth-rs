@@ -18,8 +18,9 @@ pub enum ExtractProviderError {
 impl std::fmt::Display for ExtractProviderError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ExtractProviderError::MissingAuth(err) => write!(f, "{}", err),
-            ExtractProviderError::MissingProvider(err) => write!(f, "{}", err),
+            Self::MissingAuth(err) | Self::MissingProvider(err) => {
+                write!(f, "{err}")
+            }
         }
     }
 }
@@ -52,7 +53,7 @@ where
         let ExtractAuth(auth) = ExtractAuth::from_request_parts(parts, state)
             .await
             .map_err(|err| {
-                ExtractProviderError::MissingAuth(format!("Failed to extract auth: {}", err))
+                ExtractProviderError::MissingAuth(format!("Failed to extract auth: {err}"))
             })?;
 
         // Get the list of providers from the auth object
@@ -60,7 +61,7 @@ where
 
         // Get the matched path from the request
         let Path(provider_id) = parts.extract::<Path<String>>().await.map_err(|err| {
-            ExtractProviderError::MissingAuth(format!("No provider found in path: {}", err))
+            ExtractProviderError::MissingAuth(format!("No provider found in path: {err}"))
         })?;
 
         // Find the provider in the list of providers
@@ -68,7 +69,7 @@ where
             .iter()
             .find(|p| p.id() == provider_id)
             .ok_or_else(|| {
-                ExtractProviderError::MissingProvider(format!("Provider {} not found", provider_id))
+                ExtractProviderError::MissingProvider(format!("Provider {provider_id} not found"))
             })?;
 
         Ok(Self(provider.clone()))

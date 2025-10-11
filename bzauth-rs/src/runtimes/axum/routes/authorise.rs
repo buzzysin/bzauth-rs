@@ -14,5 +14,5 @@ pub async fn authorise(
 ) -> Result<CoreResponse<AuthoriseResponse>, CoreError> {
     // Pass to internal handler
     let core_request = CoreRequest::try_from_async(request).await?.with_auth(auth);
-    tools::authorise(core_request).await
+    tools::authorise(&core_request)
 }

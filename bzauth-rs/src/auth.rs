@@ -116,43 +116,47 @@ pub struct AuthOptions {
 }
 
 impl AuthOptions {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn add_provider(self, provider: Box<dyn Provide>) -> Self {
-        let mut providers = self.providers;
-        providers.push(provider);
 
-        Self { providers, ..self }
+    #[must_use]
+    pub fn add_provider(mut self, provider: Box<dyn Provide>) -> Self {
+        self.providers.push(provider);
+        self
     }
-    pub fn with_providers(self, providers: Vec<Box<dyn Provide>>) -> Self {
-        Self { providers, ..self }
+
+    #[must_use]
+    pub fn with_providers(mut self, providers: Vec<Box<dyn Provide>>) -> Self {
+        self.providers = providers;
+        self
     }
-    pub fn with_adaptor(self, adaptor: Box<dyn Adapt>) -> Self {
-        Self {
-            adaptor: Some(adaptor),
-            ..self
-        }
+
+    #[must_use]
+    pub fn with_adaptor(mut self, adaptor: Box<dyn Adapt>) -> Self {
+        self.adaptor = Some(adaptor);
+        self
     }
-    pub fn with_callback(self, callback: SignInCallback) -> Self {
+
+    #[must_use]
+    pub fn with_callback(mut self, callback: SignInCallback) -> Self {
         let mut callbacks = self.callbacks.unwrap_or_default();
         callbacks.sign_in = Some(callback);
-        Self {
-            callbacks: Some(callbacks),
-            ..self
-        }
+        self.callbacks = Some(callbacks);
+        self
     }
-    pub fn with_callbacks(self, callbacks: AuthCallbackOptions) -> Self {
-        Self {
-            callbacks: Some(callbacks),
-            ..self
-        }
+
+    #[must_use]
+    pub fn with_callbacks(mut self, callbacks: AuthCallbackOptions) -> Self {
+        self.callbacks = Some(callbacks);
+        self
     }
-    pub fn with_session(self, session: AuthSessionOptions) -> Self {
-        Self {
-            session: Some(session),
-            ..self
-        }
+
+    #[must_use]
+    pub fn with_session(mut self, session: AuthSessionOptions) -> Self {
+        self.session = Some(session);
+        self
     }
 }
 
@@ -162,11 +166,11 @@ pub struct Auth {
 }
 
 impl Auth {
-    pub fn from_options(options: AuthOptions) -> Self {
+    pub const fn from_options(options: AuthOptions) -> Self {
         Self { options }
     }
 
     pub fn adaptor(&self) -> Option<&dyn Adapt> {
-        self.options.adaptor.as_ref().map(|a| a.as_ref())
+        self.options.adaptor.as_ref().map(AsRef::as_ref)
     }
 }

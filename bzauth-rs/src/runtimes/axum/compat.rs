@@ -1,12 +1,11 @@
-/// Compatibility layer for the Axum runtime with the CoreRequest and CoreResponse types.
+/// Compatibility layer for the Axum runtime with the `CoreRequest` and `CoreResponse` types.
 /// This module provides the necessary conversions and implementations to allow
-/// using Axum's request and response types with the CoreRequest and CoreResponse types.
+/// using Axum's request and response types with the `CoreRequest` and `CoreResponse` types.
 use axum::{Json, RequestExt, extract::Request, response::IntoResponse};
-use serde::Serialize;
 
 use crate::tools::CoreError;
 use crate::tools::request::CoreRequest;
-use crate::tools::response::{CoreResponse, RequestPayload};
+use crate::tools::response::{CoreResponse, RequestPayload, ResponsePayload};
 use crate::tools::try_async::TryFromAsync;
 
 impl<T: RequestPayload> TryFromAsync<Request> for CoreRequest<T> {
@@ -57,7 +56,7 @@ impl<T: RequestPayload> TryFromAsync<Request> for CoreRequest<T> {
         tracing::debug!("[compat:axum] Request body: {:?}", body);
 
         // Create the CoreRequest
-        Ok(CoreRequest::new_unchecked(
+        Ok(Self::new_unchecked(
             path,
             method,
             uri,
@@ -71,8 +70,9 @@ impl<T: RequestPayload> TryFromAsync<Request> for CoreRequest<T> {
 
 impl<T> IntoResponse for CoreResponse<T>
 where
-    T: Serialize,
+    T: ResponsePayload,
 {
+    #[allow(clippy::cognitive_complexity)]
     fn into_response(self) -> axum::response::Response {
         let mut response = axum::response::Response::default();
 
@@ -103,7 +103,8 @@ where
         for (_, cookie) in self.cookies.iter() {
             response.headers_mut().append(
                 axum::http::header::SET_COOKIE,
-                format!("{}", cookie.to_string())
+                cookie
+                    .to_string()
                     .parse()
                     .expect("Invalid cookie header format"),
             );

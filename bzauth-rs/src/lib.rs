@@ -1,19 +1,19 @@
 #![forbid(unsafe_code)]
-// #![warn(
+#![warn(
     // missing_docs, // TODO: this is a work in progress, so we will enable this later
     // missing_debug_implementations,
-    // clippy::all,
-    // clippy::pedantic,
-    // clippy::nursery
-// )]
-// #![
-    // allow(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery
+)]
+#![
+    allow(
         // TODO: Document all possible errors
-        // clippy::missing_errors_doc,
+        clippy::missing_errors_doc,
         // TODO: Mark values that should not be discarded (like [[nodiscard]])
-        // clippy::must_use_candidate
-    // )
-// ]
+        clippy::must_use_candidate
+    )
+]
 
 //! ## (bz)Auth.rs
 //! A Rust library for building authentication and authorization systems.

@@ -25,13 +25,13 @@ pub fn generate_client_from_provider(
     let token_url = oauth2_provider.token_endpoint().url();
 
     // Convert everything to oauth2 types
-    let client_id = ClientId::new(client_id.to_string());
-    let client_secret = ClientSecret::new(client_secret.to_string());
-    let redirect_url = RedirectUrl::new(redirect_url.to_string())
+    let client_id = ClientId::new(client_id);
+    let client_secret = ClientSecret::new(client_secret);
+    let redirect_url = RedirectUrl::new(redirect_url)
         .map_err(|_| UtilError::MissingProvider("Invalid redirect URL".to_string()))?;
-    let token_url = TokenUrl::new(token_url.to_string())
+    let token_url = TokenUrl::new(token_url)
         .map_err(|_| UtilError::MissingProvider("Invalid token URL".to_string()))?;
-    let auth_url = AuthUrl::new(auth_url.to_string())
+    let auth_url = AuthUrl::new(auth_url)
         .map_err(|_| UtilError::MissingProvider("Invalid auth URL".to_string()))?;
     let redirect_url = RedirectUrl::new(redirect_url.to_string())
         .map_err(|_| UtilError::MissingProvider("Invalid redirect URL".to_string()))?;
