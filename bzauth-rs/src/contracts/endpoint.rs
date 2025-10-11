@@ -30,16 +30,23 @@ impl Endpoint {
         match self {
             Self::Url(url) => url.clone(),
             Self::UrlWithParams(url, params) => {
-                let mut url_with_params = url.clone();
                 if params.is_empty() {
-                    return url_with_params;
+                    return url.clone();
                 }
 
+                let mut url_with_params = String::with_capacity(
+                    url.len() + params.len() * 20, // rough estimate
+                );
+                url_with_params.push_str(url);
                 url_with_params.push('?');
+
+                let mut first = true;
                 for (key, value) in params {
-                    // url_with_params.push_str(&format!("&{key}={value}"));
-                    // using write!
-                    let _ = write!(url_with_params, "&{key}={value}");
+                    if !first {
+                        url_with_params.push('&');
+                    }
+                    let _ = write!(url_with_params, "{key}={value}");
+                    first = false;
                 }
                 url_with_params
             }
