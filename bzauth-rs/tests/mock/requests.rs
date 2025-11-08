@@ -35,3 +35,25 @@ pub async fn make_callback_request(auth_url: &str, provider_name: &str) -> reqwe
 
     response
 }
+
+pub async fn make_callback_request_with_redirect(
+    auth_url: &str,
+    provider_name: &str,
+) -> reqwest::Response {
+    // Create a client with cookie store that DOES follow redirects
+    // This tests the full OAuth2 flow including cookie propagation
+    let client = reqwest::Client::builder()
+        .cookie_store(true)
+        .redirect(reqwest::redirect::Policy::default()) // Follow up to 10 redirects
+        .build()
+        .expect("Failed to build reqwest client");
+
+    let response = client
+        .post(format!("{}/callback/{}", auth_url, provider_name))
+        .query(&[("code", "mock_auth_code"), ("state", "mock_state")])
+        .send()
+        .await
+        .expect("Failed to make request to auth server");
+
+    response
+}

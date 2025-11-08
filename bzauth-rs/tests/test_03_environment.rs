@@ -135,3 +135,84 @@ async fn test_02_auth_server_callback() {
     })
     .await;
 }
+
+#[tokio::test]
+#[cfg_attr(
+    not(feature = "test_sequential"),
+    ignore = "this test cannot run in parallel"
+)]
+async fn test_03_auth_server_callback_with_redirect() {
+    let signals = mock::Signals::new();
+
+    let tmpfile = NamedTempFile::new().expect("Failed to create temp file");
+    let path = tmpfile.path();
+
+    let json_store = JsonStore::new(&JsonStoreTypes::File(path));
+    let auth_options = AuthOptions::new()
+        .add_provider(Box::new(MockProvider))
+        .with_adaptor(Box::new(MockAdaptor::new(json_store.clone())));
+    let options = AxumRuntimeOptions::from_options(auth_options);
+
+    // Start the mock auth server
+    mock::environment::axum_::run(signals, options, || async {
+        // Test the full OAuth2 flow with redirect following
+        let response =
+            requests::make_callback_request_with_redirect(MOCK_AUTH_URL, MOCK_PROVIDER_NAME)
+                .await;
+
+        let final_url = response.url().to_string();
+        let status = response.status();
+
+        println!("Final URL after redirects: {}", final_url);
+        println!("Final status: {}", status);
+
+        let body = response.text().await.expect("Failed to read response text");
+        println!("Final response body: {}", body);
+
+        // Assert that we ended up at the home page
+        assert!(
+            status.is_success(),
+            "Final page should be successful:\n\turl: {}\n\tstatus: {}\n\tbody: {}",
+            final_url,
+            status,
+            body
+        );
+
+        // Assert we're at the expected redirect location
+        assert!(
+            final_url.contains("localhost:8080"),
+            "Should have redirected to home page, got: {}",
+            final_url
+        );
+
+        // Assert the user was created in the database
+        let data = json_store
+            .get_data()
+            .expect("Failed to get data from json store");
+        
+        println!(
+            "Final JSON store: {}",
+            serde_json::to_string(&data).unwrap()
+        );
+
+        assert!(
+            data.get("users")
+                .and_then(|v| v.as_array())
+                .map_or(false, |arr| !arr.is_empty()),
+            "User should be created in database"
+        );
+        assert!(
+            data.get("sessions")
+                .and_then(|v| v.as_array())
+                .map_or(false, |arr| !arr.is_empty()),
+            "Session should be created in database"
+        );
+        assert!(
+            data.get("accounts")
+                .and_then(|v| v.as_array())
+                .map_or(false, |arr| !arr.is_empty()),
+            "Account should be linked in database"
+        );
+    })
+    .await;
+}
