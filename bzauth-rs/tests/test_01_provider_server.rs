@@ -9,7 +9,7 @@ async fn test_provider_server() {
     let signals = mock::Signals::new();
 
     // Start the mock provider server
-    let server_future = mock::provider_server::axum_::start(signals.clone());
+    let server_future = mock::server_provider::axum_::start(signals.clone());
 
     // Run the server in a separate task
     let server_handle = tokio::spawn(async move {

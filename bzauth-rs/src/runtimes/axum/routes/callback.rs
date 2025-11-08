@@ -12,5 +12,5 @@ pub async fn callback(
 ) -> Result<CoreResponse<CallbackResponse>, CoreError> {
     // Pass to internal handler
     let core_request = CoreRequest::try_from_async(request).await?.with_auth(auth);
-    tools::callback(core_request).await
+    tools::callback(&core_request).await
 }

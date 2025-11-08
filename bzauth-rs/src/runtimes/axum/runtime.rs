@@ -6,35 +6,53 @@ use axum::{Json, Router};
 use serde::Serialize;
 use serde::ser::SerializeStruct;
 
-use super::routes::{authorise, callback, csrf};
+use super::routes::{authorise, callback, csrf, logout, refresh, session};
 use crate::auth::{Auth, AuthOptions};
 use crate::contracts::provide::Provide;
 
+#[derive(Default, Clone)]
 pub struct AxumRuntime {
     pub auth: Arc<Auth>,
     pub routes: Router,
 }
 
+#[derive(Default)]
 pub struct AxumRuntimeOptions {
     pub auth_options: AuthOptions,
 }
 
 impl AxumRuntimeOptions {
     /// Create a new Axum runtime options
-    pub fn new(auth_options: AuthOptions) -> Self {
-        AxumRuntimeOptions { auth_options }
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn with_auth_options(self, auth_options: AuthOptions) -> Self {
+        Self { auth_options }
+    }
+
+    #[must_use]
+    pub const fn from_options(auth_options: AuthOptions) -> Self {
+        Self { auth_options }
+    }
+}
+
+impl From<AxumRuntimeOptions> for AxumRuntime {
+    fn from(options: AxumRuntimeOptions) -> Self {
+        Self::from_options(options)
     }
 }
 
 impl AxumRuntime {
-    /// Create a new Axum runtime
+    /// Create a new Axum runtime from the given options    
     pub fn from_options(options: AxumRuntimeOptions) -> Self {
         let AxumRuntimeOptions { auth_options } = options;
-        let routes = AxumRuntime::create_router(&auth_options);
+        let routes = Self::create_router(&auth_options);
         let auth = Arc::new(Auth::from_options(auth_options));
 
         // Create the runtime
-        AxumRuntime { auth, routes }
+        Self { auth, routes }
     }
 
     fn create_router(auth_options: &AuthOptions) -> Router {
@@ -66,9 +84,11 @@ impl AxumRuntime {
             // Ask for a csrf token
             .route("/csrf", get(csrf))
             // Get the session for the current user
-            .route("/session", get(|| async { "session endpoint" }))
+            .route("/session", get(session))
+            // Refresh access token using refresh token
+            .route("/refresh/{provider}", post(refresh))
             // Logout endpoint that invalidates the session
-            .route("/logout", get(|| async { "Logout endpoint" }))
+            .route("/logout", get(logout))
             // Get a list of providers
             .route("/providers", get(providers_handler))
     }
@@ -93,5 +113,5 @@ impl Serialize for Box<dyn Provide> {
 }
 
 fn any<H: Handler<T, S>, T: 'static, S: Clone + Send + Sync + 'static>(f: H) -> MethodRouter<S> {
-    post(f.clone()).get(f.clone())
+    post(f.clone()).get(f)
 }

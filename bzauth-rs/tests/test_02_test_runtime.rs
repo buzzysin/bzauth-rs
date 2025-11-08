@@ -20,10 +20,10 @@ async fn test_runtime_server() {
     let auth_options = AuthOptions::new()
         .add_provider(Box::new(MockProvider))
         .with_adaptor(Box::new(MockAdaptor::new(json_store)));
-    let options = AxumRuntimeOptions::new(auth_options);
+    let options = AxumRuntimeOptions::from_options(auth_options);
 
     // Start the mock auth server
-    let server_future = mock::runtime::axum::start(signals.clone(), options);
+    let server_future = mock::server_runtime::axum::start(signals.clone(), options);
 
     // Run the server in a separate task
     let server_handle = tokio::spawn(async move {

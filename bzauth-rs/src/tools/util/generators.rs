@@ -9,7 +9,7 @@ use crate::contracts::provide::ProvideOAuth2;
 pub(crate) type Oauth2Client =
     BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet>;
 
-pub fn generate_client_from_auth(
+pub fn generate_client_from_provider(
     oauth2_provider: &dyn ProvideOAuth2,
 ) -> Result<Oauth2Client, UtilError> {
     let auth_url = oauth2_provider.auth_endpoint().url();
@@ -25,13 +25,13 @@ pub fn generate_client_from_auth(
     let token_url = oauth2_provider.token_endpoint().url();
 
     // Convert everything to oauth2 types
-    let client_id = ClientId::new(client_id.to_string());
-    let client_secret = ClientSecret::new(client_secret.to_string());
-    let redirect_url = RedirectUrl::new(redirect_url.to_string())
+    let client_id = ClientId::new(client_id);
+    let client_secret = ClientSecret::new(client_secret);
+    let redirect_url = RedirectUrl::new(redirect_url)
         .map_err(|_| UtilError::MissingProvider("Invalid redirect URL".to_string()))?;
-    let token_url = TokenUrl::new(token_url.to_string())
+    let token_url = TokenUrl::new(token_url)
         .map_err(|_| UtilError::MissingProvider("Invalid token URL".to_string()))?;
-    let auth_url = AuthUrl::new(auth_url.to_string())
+    let auth_url = AuthUrl::new(auth_url)
         .map_err(|_| UtilError::MissingProvider("Invalid auth URL".to_string()))?;
     let redirect_url = RedirectUrl::new(redirect_url.to_string())
         .map_err(|_| UtilError::MissingProvider("Invalid redirect URL".to_string()))?;

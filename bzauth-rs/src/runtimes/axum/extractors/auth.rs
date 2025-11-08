@@ -4,6 +4,7 @@ use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use axum::response::IntoResponse;
 use axum::{Extension, RequestPartsExt};
+use http::StatusCode;
 use serde::Serialize;
 
 use crate::auth::Auth;
@@ -18,7 +19,7 @@ pub enum ExtractAuthError {
 impl std::fmt::Display for ExtractAuthError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ExtractAuthError::MissingAuth(err) => write!(f, "{}", err),
+            Self::MissingAuth(err) => write!(f, "{err}"),
         }
     }
 }
@@ -28,8 +29,8 @@ impl std::error::Error for ExtractAuthError {}
 impl IntoResponse for ExtractAuthError {
     fn into_response(self) -> axum::http::Response<axum::body::Body> {
         match self {
-            ExtractAuthError::MissingAuth(err) => axum::http::Response::builder()
-                .status(401)
+            Self::MissingAuth(err) => axum::http::Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
                 .body(axum::body::Body::from(err))
                 .unwrap(),
         }
@@ -47,10 +48,8 @@ where
         let auth = parts
             .extract::<Extension<Arc<Auth>>>()
             .await
-            .map_err(|err| {
-                ExtractAuthError::MissingAuth(format!("Failed to extract auth: {}", err))
-            })
-            .map(|auth| auth.0.clone())?;
+            .map_err(|err| ExtractAuthError::MissingAuth(format!("Failed to extract auth: {err}")))
+            .map(|auth| auth.0)?;
 
         Ok(Self(auth))
     }

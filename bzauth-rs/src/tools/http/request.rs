@@ -9,7 +9,10 @@ use crate::auth::Auth;
 use crate::tools::response::RequestPayload;
 
 #[derive(Clone)]
-pub struct CoreRequest<T = ()> {
+pub struct CoreRequest<T = ()>
+where
+    T: RequestPayload + 'static,
+{
     path: String,
     method: String,
     uri: Uri,
@@ -20,7 +23,10 @@ pub struct CoreRequest<T = ()> {
     _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T> CoreRequest<T> {
+impl<T: RequestPayload> CoreRequest<T> {
+    /// Creates a new `CoreRequest` with the given parameters.
+    /// # Panics
+    /// Panics if the body cannot be serialized to JSON.
     pub fn new(
         path: String,
         method: String,
@@ -45,7 +51,7 @@ impl<T> CoreRequest<T> {
         }
     }
 
-    pub fn new_unchecked(
+    pub const fn new_unchecked(
         path: String,
         method: String,
         uri: Uri,
@@ -66,6 +72,7 @@ impl<T> CoreRequest<T> {
         }
     }
 
+    #[must_use]
     pub fn with_auth(self, auth: Arc<Auth>) -> Self {
         Self {
             auth: Some(auth),
@@ -87,7 +94,7 @@ impl<T> CoreRequest<T> {
         self.headers
             .get(key)
             .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
     }
 
     pub fn path(&self) -> &str {
@@ -98,15 +105,15 @@ impl<T> CoreRequest<T> {
         &self.method
     }
 
-    pub fn uri(&self) -> &Uri {
+    pub const fn uri(&self) -> &Uri {
         &self.uri
     }
 
-    pub fn headers(&self) -> &HeaderMap {
+    pub const fn headers(&self) -> &HeaderMap {
         &self.headers
     }
 
-    pub fn cookies(&self) -> &Cookies {
+    pub const fn cookies(&self) -> &Cookies {
         &self.cookies
     }
 
@@ -127,7 +134,7 @@ impl<T> CoreRequest<T> {
         self.body().map(f)
     }
 
-    pub fn auth(&self) -> Option<&Arc<Auth>> {
+    pub const fn auth(&self) -> Option<&Arc<Auth>> {
         self.auth.as_ref()
     }
 }

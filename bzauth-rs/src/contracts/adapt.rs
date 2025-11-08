@@ -33,16 +33,21 @@ pub struct AdaptSession {
     pub expires_in: u64,
 }
 impl AdaptSession {
+    /// # Panics
+    #[must_use]
     pub fn adapt_from(session: Session, token: String) -> Self {
-        AdaptSession {
+        Self {
             token,
             user_id: session.user.unwrap().id.unwrap(),
             expires_in: {
+                // TODO: Deal with this properly, perhaps by using chrono throughout, or using u64 everywhere
+                #[allow(clippy::cast_sign_loss)]
                 let now = chrono::Utc::now().timestamp() as u64;
                 session.expires_at.unwrap_or(0) - now
             },
         }
     }
+    /// # Panics
     pub fn adapt_into(&self, session: &Session) -> Session {
         Session {
             user: Some(User {
@@ -50,6 +55,7 @@ impl AdaptSession {
                 ..session.user.clone().unwrap()
             }),
             expires_at: {
+                #[allow(clippy::cast_sign_loss)]
                 let now = chrono::Utc::now().timestamp() as u64;
                 Some(self.expires_in + now)
             },

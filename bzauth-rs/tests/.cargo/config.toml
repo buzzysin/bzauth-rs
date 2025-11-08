@@ -1,0 +1,4 @@
+[env]
+RUST_BACKTRACE = "1"
+test_02_test_runtime = { value = "debug", force = true }
+test_03_environment = { value = "debug", force = true }
