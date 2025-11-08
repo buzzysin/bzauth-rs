@@ -55,29 +55,6 @@ pub async fn register(
     // Infer the host from the request headers
     let redirect_url = request.extract_redirect_url().await?;
 
-    // TODO: Move this to an internal functionality of CoreResponse
-
-    // Infer the host from the request headers
-    let url = _request.uri().to_string();
-    let host = _request.headers().get("host").and_then(|h| h.to_str().ok());
-    if host.is_none() {
-        return Err(
-            CoreError::new().with_message("Failed to infer the host from the request headers")
-        );
-    }
-    let scheme = _request.uri().scheme_str().unwrap_or("http");
-    let base_url = format!("{}://{}", scheme, host.unwrap());
-
-    // Convert the host to a string
-    let redirect_callback = _auth
-        .options
-        .callbacks
-        .as_ref()
-        .map(|c| c.redirect.clone())
-        .unwrap_or_default();
-
-    let redirect_url = redirect_callback(url.clone(), base_url).await;
-
     // TODO: If a callback-url cookie is set, use that instead of redirecting to the home page
     Ok(CoreResponse::new()
         .with_redirect(&redirect_url)
