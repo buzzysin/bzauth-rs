@@ -69,11 +69,14 @@ fn authorise_oauth2(
     tracing::debug!("[authorise] Authorisation URL: {}", authorisation_url);
     tracing::debug!(
         "[authorise] State: {:?}",
-        response.cookies().get("state").map(|c| c.value)
+        response.cookies().get("state").map(cookie::Cookie::value)
     );
     tracing::debug!(
         "[authorise] CSRF Token: {:?}",
-        response.cookies().get("csrf_token").map(|c| c.value)
+        response
+            .cookies()
+            .get("csrf_token")
+            .map(cookie::Cookie::value)
     );
 
     // Redirect to the authorization URL

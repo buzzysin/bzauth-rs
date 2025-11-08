@@ -137,8 +137,14 @@ impl<T: RequestPayload> CoreRequest<T> {
             .cookies()
             .get("session")
             .ok_or_else(|| UtilError::MissingAuth("Session token not found".to_string()))?
-            .value
-            .ok_or_else(|| UtilError::MissingAuth("Session token cookie is empty".to_string()))?;
+            .value()
+            .to_string();
+
+        if session_cookie.is_empty() {
+            return Err(UtilError::MissingAuth(
+                "Session token cookie is empty".to_string(),
+            ));
+        }
 
         Ok(session_cookie)
     }
