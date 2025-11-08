@@ -18,7 +18,10 @@ pub mod JsonStoreTypes {
     where
         P: AsRef<Path>,
     {
-        Some(path.as_ref().to_string_lossy().to_string())
+        path.as_ref().to_str().map(|s| s.to_string()).or_else(|| {
+            // fallback to lossy conversion if not valid UTF-8
+            Some(path.as_ref().to_string_lossy().to_string())
+        })
     }
 }
 

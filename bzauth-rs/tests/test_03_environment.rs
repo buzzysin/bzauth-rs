@@ -157,8 +157,7 @@ async fn test_03_auth_server_callback_with_redirect() {
     mock::environment::axum_::run(signals, options, || async {
         // Test the full OAuth2 flow with redirect following
         let response =
-            requests::make_callback_request_with_redirect(MOCK_AUTH_URL, MOCK_PROVIDER_NAME)
-                .await;
+            requests::make_callback_request_with_redirect(MOCK_AUTH_URL, MOCK_PROVIDER_NAME).await;
 
         let final_url = response.url().to_string();
         let status = response.status();
@@ -189,7 +188,7 @@ async fn test_03_auth_server_callback_with_redirect() {
         let data = json_store
             .get_data()
             .expect("Failed to get data from json store");
-        
+
         println!(
             "Final JSON store: {}",
             serde_json::to_string(&data).unwrap()
