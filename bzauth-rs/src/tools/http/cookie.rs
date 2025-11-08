@@ -91,12 +91,12 @@ impl FromStr for Cookies {
             if let Some((name, value)) = part.split_once('=') {
                 let name = name.trim().to_string();
                 let value = value.trim().to_string();
-                
+
                 let mut cookie = InnerCookie::new(name.clone(), value);
                 cookie.set_path("/");
                 cookie.set_same_site(SameSite::Lax);
                 cookie.set_http_only(true);
-                
+
                 cookies.cookies.insert(name, cookie);
             } else {
                 // Handle cookies without values
@@ -105,7 +105,7 @@ impl FromStr for Cookies {
                 cookie.set_path("/");
                 cookie.set_same_site(SameSite::Lax);
                 cookie.set_http_only(true);
-                
+
                 cookies.cookies.insert(name, cookie);
             }
         }
@@ -113,4 +113,3 @@ impl FromStr for Cookies {
         Ok(cookies)
     }
 }
-

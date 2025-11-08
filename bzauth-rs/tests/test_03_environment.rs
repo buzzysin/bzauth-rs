@@ -2,7 +2,7 @@ mod mock;
 
 use bzauth_rs::auth::AuthOptions;
 use bzauth_rs::runtimes::axum::AxumRuntimeOptions;
-use mock::runtime::MOCK_AUTH_URL;
+use mock::server_runtime::MOCK_AUTH_URL;
 use mock::{JsonStore, JsonStoreTypes, MOCK_PROVIDER_NAME, MockAdaptor, MockProvider, requests};
 use tempfile::NamedTempFile;
 
@@ -55,7 +55,7 @@ async fn test_01_auth_server_authorize() {
         // For example, you could make requests to the server and assert responses
 
         // Fetch the authorization URL
-        let response = requests::make_authorization_request().await;
+        let response = requests::make_authorisation_request().await;
 
         assert!(
             response.status().is_success(),
@@ -89,22 +89,32 @@ async fn test_02_auth_server_callback() {
 
         let url = response.url().to_string();
         let status = response.status();
-        let cookies = response
-            .cookies()
-            .map(|c| format!("{}={}", c.name(), c.value()))
-            .collect::<Vec<_>>();
-        let user_info = response.text().await.expect("Failed to read response text");
 
-        // Assert that the request was successful
+        // Debug: print all headers
+        println!("Response status: {}", status);
+        println!("Response headers: {:?}", response.headers());
+
+        // Check for Set-Cookie headers (clone before consuming response)
+        let cookies = response
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .map(|v| v.to_str().unwrap_or("").to_string())
+            .collect::<Vec<_>>();
+
+        println!("Found cookies: {:?}", cookies);
+
+        let body = response.text().await.expect("Failed to read response text");
+        println!("Response body: {}", body);
+
+        // Assert that the request returned a redirect (302 or 307)
         assert!(
-            status.is_success(),
-            "Callback request failed:\n\turl: {}\n\tstatus: {}\n\tbody: {}",
+            status.is_redirection(),
+            "Callback should return a redirect:\n\turl: {}\n\tstatus: {}\n\tbody: {}",
             url,
             status,
-            user_info
-        );
-
-        // Assert that the session cookie was set
+            body
+        ); // Assert that the session cookie was set
         assert!(
             !cookies.is_empty(),
             "No cookies were set in the response: {}",

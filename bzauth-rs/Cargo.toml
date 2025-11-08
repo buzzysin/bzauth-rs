@@ -23,7 +23,7 @@ sqlite = [
 postgres = [] # TODO: Add Postgres support
 
 # Testing features
-test_sequential = ["reqwest/cookies"]
+test_sequential = []
 test_unsafe_logging = []
 
 [dependencies]
@@ -32,7 +32,7 @@ tokio = { version = "1.46", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 oauth2 = "5.0"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "cookies"] }
 
 # Supported runtimes
 axum = { version = "0.8", features = ["macros", "json"], optional = true }

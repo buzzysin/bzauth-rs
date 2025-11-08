@@ -18,7 +18,14 @@ pub async fn make_authorisation_request() -> reqwest::Response {
 }
 
 pub async fn make_callback_request(auth_url: &str, provider_name: &str) -> reqwest::Response {
-    let client = reqwest::Client::new();
+    // Create a client with cookie store enabled, but don't follow redirects
+    // We want to check the cookies from the callback response itself
+    let client = reqwest::Client::builder()
+        .cookie_store(true)
+        .redirect(reqwest::redirect::Policy::none()) // Don't follow redirects
+        .build()
+        .expect("Failed to build reqwest client");
+
     let response = client
         .post(format!("{}/callback/{}", auth_url, provider_name))
         .query(&[("code", "mock_auth_code"), ("state", "mock_state")])

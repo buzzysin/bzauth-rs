@@ -101,10 +101,12 @@ where
         // Set the cookies
         tracing::debug!("[compat:axum] Setting cookies: {:?}", self.cookies);
         for (_, cookie) in self.cookies.iter() {
+            // The cookie crate's to_string() produces the full Set-Cookie header value
+            let cookie_header_value = cookie.to_string();
+            tracing::debug!("[compat:axum] Cookie header value: {}", cookie_header_value);
             response.headers_mut().append(
                 axum::http::header::SET_COOKIE,
-                cookie
-                    .to_string()
+                cookie_header_value
                     .parse()
                     .expect("Invalid cookie header format"),
             );
