@@ -6,7 +6,7 @@ use axum::{Json, Router};
 use serde::Serialize;
 use serde::ser::SerializeStruct;
 
-use super::routes::{authorise, callback, csrf};
+use super::routes::{authorise, callback, csrf, logout, refresh, session};
 use crate::auth::{Auth, AuthOptions};
 use crate::contracts::provide::Provide;
 
@@ -84,9 +84,11 @@ impl AxumRuntime {
             // Ask for a csrf token
             .route("/csrf", get(csrf))
             // Get the session for the current user
-            .route("/session", get(|| async { "session endpoint" }))
+            .route("/session", get(session))
+            // Refresh access token using refresh token
+            .route("/refresh/{provider}", post(refresh))
             // Logout endpoint that invalidates the session
-            .route("/logout", get(|| async { "Logout endpoint" }))
+            .route("/logout", get(logout))
             // Get a list of providers
             .route("/providers", get(providers_handler))
     }
