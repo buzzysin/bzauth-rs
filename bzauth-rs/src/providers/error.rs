@@ -2,4 +2,5 @@
 pub enum ProviderError {
     MissingClientId(String),
     MissingClientSecret(String),
+    MissingField(&'static str),
 }

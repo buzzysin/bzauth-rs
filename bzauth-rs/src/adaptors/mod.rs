@@ -1,7 +1,7 @@
 pub mod error;
 
-#[cfg(feature = "adapt_diesel")]
+#[cfg(feature = "diesel")]
 pub mod diesel;
 
-#[cfg(feature = "adapt_sqlx")]
+#[cfg(feature = "sqlx")]
 pub mod sqlx;

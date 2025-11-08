@@ -14,5 +14,8 @@ pub use http::*;
 pub use routes::authorise::*;
 pub use routes::callback::*;
 pub use routes::csrf::*;
+pub use routes::logout::*;
+pub use routes::refresh::*;
+pub use routes::session::*;
 pub use util::try_async::*;
 pub use util::*; // Make the `TryFromAsync` trait available

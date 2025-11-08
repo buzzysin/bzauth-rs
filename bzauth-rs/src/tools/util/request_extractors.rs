@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::generators::{Oauth2Client, generate_client_from_auth};
+use super::generators::Oauth2Client;
 use crate::auth::Auth;
 use crate::contracts::adapt::Adapt;
 use crate::contracts::provide::Provide;
@@ -14,20 +14,22 @@ pub enum UtilError {
     MissingProvider(String),
     //
     ClientCreationFailed(String),
+    InferHostFailed(String),
 }
 
 impl From<UtilError> for CoreError {
     fn from(error: UtilError) -> Self {
         match error {
-            UtilError::MissingAuth(msg) => CoreError::new().with_message(msg),
-            UtilError::MissingProviderId(msg) => CoreError::new().with_message(msg),
-            UtilError::MissingProvider(msg) => CoreError::new().with_message(msg),
-            UtilError::ClientCreationFailed(msg) => CoreError::new().with_message(msg),
+            UtilError::MissingAuth(msg)
+            | UtilError::MissingProviderId(msg)
+            | UtilError::MissingProvider(msg)
+            | UtilError::ClientCreationFailed(msg)
+            | UtilError::InferHostFailed(msg) => Self::new().with_message(msg),
         }
     }
 }
 
-/// Extends the CoreRequest object
+/// Extends the `CoreRequest` object
 impl<T: RequestPayload> CoreRequest<T> {
     /// Extracts the auth object from the request.
     pub fn extract_auth(&self) -> Result<Arc<Auth>, UtilError> {
@@ -42,7 +44,7 @@ impl<T: RequestPayload> CoreRequest<T> {
             .split('/')
             .nth(2)
             .ok_or_else(|| UtilError::MissingProviderId("Provider ID not found".to_string()))
-            .map(|id| id.to_string())
+            .map(ToString::to_string)
     }
 
     /// Extracts the provider from the request based on the provider ID and auth options.
@@ -93,7 +95,7 @@ impl<T: RequestPayload> CoreRequest<T> {
         Ok(state)
     }
 
-    /// Extracts the OAuth2 client from the request.
+    /// Extracts the `OAuth2` client from the request.
     pub fn extract_oauth2_client(&self) -> Result<Oauth2Client, UtilError> {
         let provider = self.extract_provider()?;
         let oauth2_provider = provider
@@ -101,7 +103,50 @@ impl<T: RequestPayload> CoreRequest<T> {
             .as_oauth2()
             .ok_or_else(|| UtilError::MissingProvider("Provider is not OAuth2".to_string()))?;
 
-        generate_client_from_auth(oauth2_provider)
+        super::generators::generate_client_from_provider(oauth2_provider)
+    }
+
+    /// Extracts the redirect url. If the `BZAUTH_URL` environment variable is not set,
+    /// the request origin is used as a baseline
+    pub async fn extract_redirect_url(&self) -> Result<String, UtilError> {
+        let default_url = std::env::var("BZAUTH_URL");
+        let url = self.uri().to_string();
+        let host = self.headers().get("host").and_then(|h| h.to_str().ok());
+
+        let scheme = self.uri().scheme_str().unwrap_or("http");
+        let base_url =
+            default_url.unwrap_or_else(|_| format!("{}://{}", scheme, host.unwrap_or("localhost")));
+
+        // Convert the host to a string
+        let auth = self.extract_auth()?;
+        let redirect_callback = auth
+            .options
+            .callbacks
+            .as_ref()
+            .map(|c| c.redirect.clone())
+            .unwrap_or_default();
+
+        let redirect_url = redirect_callback(url.clone(), base_url).await;
+        Ok(redirect_url)
+    }
+
+    /// Extracts the session token from the request.
+    pub fn extract_session_token(&self) -> Result<String, UtilError> {
+        // Check the cookies for a session token
+        let session_cookie = self
+            .cookies()
+            .get("session")
+            .ok_or_else(|| UtilError::MissingAuth("Session token not found".to_string()))?
+            .value()
+            .to_string();
+
+        if session_cookie.is_empty() {
+            return Err(UtilError::MissingAuth(
+                "Session token cookie is empty".to_string(),
+            ));
+        }
+
+        Ok(session_cookie)
     }
 }
 

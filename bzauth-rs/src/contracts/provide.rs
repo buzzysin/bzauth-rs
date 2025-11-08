@@ -7,7 +7,7 @@ use super::endpoint::Endpoint;
 use super::profile::Profile;
 use super::user::User;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum ProviderType {
     #[serde(rename = "oidc")]
     OIDC,
@@ -36,11 +36,11 @@ impl TryFrom<String> for ProviderType {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.as_str() {
-            "oidc" => Ok(ProviderType::OIDC),
-            "oauth" => Ok(ProviderType::OAuth),
-            "email" => Ok(ProviderType::Email),
-            "credentials" => Ok(ProviderType::Credentials),
-            _ => Err(format!("Unknown provider type: {}", value)),
+            "oidc" => Ok(Self::OIDC),
+            "oauth" => Ok(Self::OAuth),
+            "email" => Ok(Self::Email),
+            "credentials" => Ok(Self::Credentials),
+            _ => Err(format!("Unknown provider type: {value}")),
         }
     }
 }
@@ -48,10 +48,10 @@ impl TryFrom<String> for ProviderType {
 impl std::fmt::Display for ProviderType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ProviderType::OIDC => write!(f, "oidc"),
-            ProviderType::OAuth => write!(f, "oauth"),
-            ProviderType::Email => write!(f, "email"),
-            ProviderType::Credentials => write!(f, "credentials"),
+            Self::OIDC => write!(f, "oidc"),
+            Self::OAuth => write!(f, "oauth"),
+            Self::Email => write!(f, "email"),
+            Self::Credentials => write!(f, "credentials"),
         }
     }
 }
@@ -163,3 +163,35 @@ impl<T: ProvideOAuth2> Provide for T {
 //         Box::new(provider)
 //     }
 // }
+
+#[macro_export]
+macro_rules! provider_utils {
+    // Opt-in implementation for Box
+    ($provider:ty, Box) => {
+        impl Provide for $provider {
+            fn id(&self) -> String {
+                self.as_ref().id()
+            }
+
+            fn name(&self) -> String {
+                self.as_ref().name()
+            }
+
+            fn provider_type(&self) -> ProviderType {
+                self.as_ref().provider_type()
+            }
+
+            fn as_any(&self) -> &dyn Any {
+                self.as_ref().as_any()
+            }
+
+            fn as_any_mut(&mut self) -> &mut dyn Any {
+                self.as_mut().as_any_mut()
+            }
+
+            fn as_oauth2(&self) -> Option<&dyn ProvideOAuth2> {
+                self.as_ref().as_oauth2()
+            }
+        }
+    };
+}

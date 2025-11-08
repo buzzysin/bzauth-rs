@@ -1,32 +1,24 @@
-use std::sync::Arc;
-
-use crate::auth::Auth;
 use crate::contracts::account::Account;
 use crate::contracts::adapt::{Adapt, CreateSessionOptions};
-use crate::contracts::provide::Provide;
 use crate::contracts::user::User;
 use crate::tools::request::CoreRequest;
 use crate::tools::response::CoreResponse;
 use crate::tools::{CallbackRequest, CallbackResponse, CoreError};
 
+/// # Panics
+/// This function will panic if the `profile_user.id` is `None` after user creation
+/// or if there are issues generating the session token. THIS IS A BUG AND SHOULD BE FIXED.
 pub async fn register(
-    _request: CoreRequest<CallbackRequest>,
-    _user: Option<User>,
-    _account: Option<Account>,
-    _provider: &dyn Provide,
-    _adaptor: &dyn Adapt,
-    _auth: Arc<Auth>,
+    request: CoreRequest<CallbackRequest>,
+    profile_user: User,
+    adapt_account: Account,
+    adaptor: &dyn Adapt,
 ) -> Result<CoreResponse<CallbackResponse>, CoreError> {
-    if _user.is_none() {
-        return Err(CoreError::new().with_message("User is required for registration"));
-    }
-
-    let _user = _user.unwrap();
-    let user_email = _user.email.clone();
+    let user_email = profile_user.email.clone();
 
     // Check if email is already registered
     let user_by_email = if let Some(email) = user_email {
-        _adaptor.get_user_by_email(email.clone()).await
+        adaptor.get_user_by_email(email.clone()).await
     } else {
         None
     };
@@ -37,25 +29,31 @@ pub async fn register(
     }
 
     // Create user, link account, generate session, and redirect
-    let session_generated = "TODO";
+    let session_generated = uuid::Uuid::new_v4(); // Generate a new session token
 
-    let _debug = _adaptor.create_user(_user.clone()).await;
-    tracing::debug!("[register] Created User: {:?}", _debug);
+    let user = adaptor.create_user(profile_user.clone()).await;
+    tracing::debug!("[callback:register] Created User: {:?}", user);
 
-    let _debug = _adaptor.link_account(_account.unwrap()).await;
-    tracing::debug!("[register] Linked Account: {:?}", _debug);
+    let account = adaptor.link_account(adapt_account.clone()).await;
+    tracing::debug!("[callback:register] Linked Account: {:?}", account);
 
-    let _debug = _adaptor
+    let session = adaptor
         .create_session(CreateSessionOptions {
             token: session_generated.to_string(), // TODO: Generate a proper token
-            user_id: _user.id.clone().unwrap(),
+            user_id: profile_user.id.clone().unwrap(),
             expires_in: 3600, // TODO: Set appropriate expiration time from configuration
         })
         .await;
-    tracing::debug!("[register] Created Session: {:?}", _debug);
+    tracing::debug!("[callback:register] Created Session: {session:?}");
 
-    let mut cookies = _request.cookies().clone();
-    cookies.set("session_token", session_generated.to_string());
+    let mut cookies = request.cookies().clone();
+    cookies.set("session", session_generated.to_string());
+
+    #[cfg(debug_assertions)]
+    println!("[register] Cookies after registration: {cookies:?}");
+
+    // Infer the host from the request headers
+    let redirect_url = request.extract_redirect_url().await?;
 
     // TODO: Move this to an internal functionality of CoreResponse
 
@@ -82,6 +80,6 @@ pub async fn register(
 
     // TODO: If a callback-url cookie is set, use that instead of redirecting to the home page
     Ok(CoreResponse::new()
-        .with_redirect(redirect_url)
+        .with_redirect(&redirect_url)
         .with_cookies(cookies.clone()))
 }
